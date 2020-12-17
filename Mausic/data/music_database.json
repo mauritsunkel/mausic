@@ -1,0 +1,74 @@
+{
+    "album": {
+        "0": null,
+        "1": null
+    },
+    "artist": {
+        "0": "What's Love Got To Do With It",
+        "1": "Snail's House"
+    },
+    "bpm": {
+        "0": null,
+        "1": null
+    },
+    "duration": {
+        "0": null,
+        "1": 240.0
+    },
+    "emotion": {
+        "0": null,
+        "1": null
+    },
+    "genre": {
+        "0": null,
+        "1": null
+    },
+    "instrument": {
+        "0": null,
+        "1": null
+    },
+    "language": {
+        "0": null,
+        "1": null
+    },
+    "rating": {
+        "0": 75,
+        "1": 75
+    },
+    "rationale": {
+        "0": null,
+        "1": null
+    },
+    "release_year": {
+        "0": 2020,
+        "1": 2017
+    },
+    "song": {
+        "0": "What's Love Got To Do With It",
+        "1": "Pixel Galaxy (Official MV)"
+    },
+    "filepath": {
+        "0": "What's Love Got To Do With It - Walk Off The Earth (Tina Turner Cover)",
+        "1": "Snail's House - Pixel Galaxy (Official MV)"
+    },
+    "sophisticated": {
+        "0": 50,
+        "1": 50
+    },
+    "type": {
+        "0": null,
+        "1": null
+    },
+    "vocal": {
+        "0": null,
+        "1": null
+    },
+    "year_added": {
+        "0": 2020,
+        "1": 2020
+    },
+    "youtube_url": {
+        "0": "https:\/\/www.youtube.com\/watch?v=LlDdkLfyxxc",
+        "1": "https:\/\/www.youtube.com\/watch?v=3nlSDxvt6JU"
+    }
+}
