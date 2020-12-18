@@ -2,11 +2,14 @@ from __future__ import unicode_literals
 import youtube_dl
 import update_database as ud
 
+
+# print(help(youtube_dl))
 # DEVNOTE: need to download & install & PATH ffmpeg: https://www.youtube.com/watch?v=r1AtmY-RMyQ
 
-class Music_download:
+class MusicDownload:
 	def __init__(self, youtube_link, download_wav = True, download_mp4 = False):
 		self.ydl_audio_options = {
+			'noplaylist': True,
 			'format': 'bestaudio/best',
 			# 'format': 'bestvideo',
 			# 'format': 'bestvideo[ext=mp4]+bestaudio[ext=wav]/best',
@@ -19,6 +22,7 @@ class Music_download:
 		
 		self.ydl_video_options = {
 		# 'format': 'bestaudio/best',
+		'noplaylist': True,
 		'format': 'bestvideo[ext=mp4]', # can try webm extension
 		# 'format': 'bestvideo[ext=mp4]+bestaudio[ext=wav]/best',
 		'outtmpl': 'wav_music' + '/%(title)s.%(ext)s',
@@ -31,7 +35,10 @@ class Music_download:
 		
 	@staticmethod
 	def download_annotations(link):
-		with youtube_dl.YoutubeDL() as ydl: 
+		ydl_annotation_options = {
+			'noplaylist': True
+		}
+		with youtube_dl.YoutubeDL(ydl_annotation_options) as ydl: 
 			return ydl.extract_info(link, download = False)
 
 	def download_mp4(self, link):

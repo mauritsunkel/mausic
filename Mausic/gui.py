@@ -1,8 +1,9 @@
 import tkinter as tk
 import player
 import queue
+import update_database as ud
+import download_music as dm 
 
-from download_music import Music_download as md
 from threading import Thread, Lock
 
 from tkinter import ttk 
@@ -12,6 +13,7 @@ class UserInterface(tk.Frame):
     objects = []
     RATING_DEFAULT = 75
     SOPHISTICATED_DEFAULT = 50
+    MDB = ud.MusicDatabase()
 
     def __init__(self, parent = None):
         tk.Frame.__init__(self, parent)
@@ -48,16 +50,13 @@ class UserInterface(tk.Frame):
         self.meta_information_lf.grid(row = 2, column = 1, rowspan = 2, columnspan = 1)
         self.player_lf.grid(row = 3, column = 0, rowspan = 3, columnspan = 1)
 
-
     def initialize_add_song(self):
         self.link_l = tk.Label(self.add_song_lf, text = "Link")
-        self.link_e = tk.Entry(self.add_song_lf)
+        self.link_e = tk.Entry(self.add_song_lf, state = 'disabled')
 
-        # TODO then add a shortcut such that after copying the youtube link, you can put the GUI in front, paste clipboard in link and start getting meta info to fill in! 
-        # TODO add func: on click label paste whats copied on clipboard to link_e and with youtube-dl get meta information to prep many values (if no link in clipboard or in entry, error msg
+
         print("clipboard", self.clipboard_get())
         
-
 
 
 
@@ -84,7 +83,8 @@ class UserInterface(tk.Frame):
         self.album_l = tk.Label(self.add_song_lf, text = "Album")
         self.album_e = tk.Entry(self.add_song_lf)
         self.type_l = tk.Label(self.add_song_lf, text = "Type")
-        self.type_cb = ttk.Combobox(self.add_song_lf, state = 'readonly', values = ["", "Single", "EP", "Cover", "Remix", "Mashup"])
+        self.type_sv = tk.StringVar()
+        self.type_cb = ttk.Combobox(self.add_song_lf, textvariable = self.type_sv, state = 'readonly', values = ["", "Single", "EP", "Cover", "Remix", "Mashup"])
         self.type_cb.current(0)
         self.release_year_l = tk.Label(self.add_song_lf, text = "Release year")
         self.release_year_e = tk.Entry(self.add_song_lf)
@@ -95,7 +95,7 @@ class UserInterface(tk.Frame):
         self.rating_s.set(self.RATING_DEFAULT)
 
         
-
+        # TODO create listener on self.song_l and self.artist_l when text changes, check how many characters and put all width of entries n_characters + 5 to always see all text 
         
         self.sophisticated_l = tk.Label(self.add_song_lf, text = "Sophisticated: {}".format(self.SOPHISTICATED_DEFAULT), width = 14)
         self.sophisticated_s = tk.Scale(self.add_song_lf, from_ = 0, to = 100, resolution = 1, command = self.update_sophisticated, orient = 'horizontal')
@@ -104,7 +104,7 @@ class UserInterface(tk.Frame):
         
         self.emotion_l = tk.Label(self.add_song_lf, text = "Emotion")
 
-        # TODO create a dropdown menu for categorical emotions 
+        
         self.emotion_f = tk.Frame(self.add_song_lf)
         self.emotion_f.grid(row = 8, column = 3)
         self.emotion_sb = tk.Scrollbar(self.emotion_f)
@@ -116,12 +116,7 @@ class UserInterface(tk.Frame):
         self.emotion_lb.pack(side = 'left')
         self.emotion_sb.config(command = self.emotion_lb.yview)
 
-
-
-        self.bpm_l = tk.Label(self.add_song_lf, text = "BPM")
-        self.bpm_e = tk.Entry(self.add_song_lf, state = 'disabled')
         self.instrument_l = tk.Label(self.add_song_lf, text = "Instrument(s)")
-
         self.instrument_f = tk.Frame(self.add_song_lf)
         self.instrument_f.grid(row = 8, column = 5)
         self.instrument_sb = tk.Scrollbar(self.instrument_f)
@@ -142,8 +137,9 @@ class UserInterface(tk.Frame):
         self.year_added_l = tk.Label(self.add_song_lf, text = "Year added")
         self.year_added_e = tk.Entry(self.add_song_lf, state = 'disabled')
 
-        self.link_l.grid(row = 0, column = 0, sticky = 'e')
-        self.link_e.grid(row = 0, column = 1)
+        self.add_database_b = tk.Button(self.add_song_lf, text = "Add to database")
+
+
         self.song_l.grid(row = 1, column = 0, sticky = 'e')
         self.song_e.grid(row = 1, column = 1)
         self.artist_l.grid(row = 2, column = 0, sticky = 'e')
@@ -162,8 +158,7 @@ class UserInterface(tk.Frame):
         self.emotion_l.grid(row = 8, column = 2, sticky = 'e')
 
         
-        self.bpm_l.grid(row = 3, column = 4, sticky = 'e')
-        self.bpm_e.grid(row = 3, column = 5)
+    
 
         self.type_l.grid(row = 0, column = 4, sticky = 'e')
         self.type_cb.grid(row = 0, column = 5)
@@ -171,6 +166,8 @@ class UserInterface(tk.Frame):
         self.vocal_cb.grid(row = 1, column = 5)
         self.language_l.grid(row = 2, column = 4, sticky = 'e')
         self.language_cb.grid(row = 2, column = 5)
+        self.link_l.grid(row = 3, column = 4, sticky = 'e')
+        self.link_e.grid(row = 3, column = 5)
         self.duration_l.grid(row = 4, column = 4, sticky = 'e')
         self.duration_e.grid(row = 4, column = 5)
         self.year_added_l.grid(row = 7, column = 4, sticky = 'e')
@@ -178,6 +175,9 @@ class UserInterface(tk.Frame):
         self.instrument_l.grid(row = 8, column = 4, sticky = 'e')
 
         self.genre_l.grid(row = 8, column = 0, sticky = 'e')
+
+        self.add_database_b.grid(row = 0, column = 1)
+
 
         
         
@@ -193,11 +193,47 @@ class UserInterface(tk.Frame):
         self.parent.attributes("-topmost", False)
         # self.lift() # does not work? 
 
+    def set_add_song_values(self, meta, youtube_link): 
+        self.link_e.configure(state='normal')
+        self.link_e.delete(0, tk.END)
+        self.link_e.insert(0, youtube_link)
+        self.link_e.configure(state='disabled')
+        self.song_e.delete(0, tk.END)
+        self.song_e.insert(0, meta['song'])
+        # TODO artists should be a list in meta, check in update_database to create that properly (, seperation where needed etc) - loop here for each artist and append to string by , 
+        self.artist_e.delete(0, tk.END)
+        self.artist_e.insert(0, meta['artist'])
+        self.album_e.delete(0, tk.END)
+        self.album_e.insert(0, meta['album'] if meta['album'] != None else "")
+        self.release_year_e.delete(0, tk.END)
+        self.release_year_e.insert(0, meta['release_year'])
+        self.year_added_e.delete(0, tk.END)
+        self.year_added_e.insert(0, meta['year_added'])
+        self.duration_e.configure(state='normal')
+        self.duration_e.delete(0, tk.END)
+        self.duration_e.insert(0, meta['duration'])
+        self.duration_e.configure(state='disabled')
+        self.year_added_e.configure(state='normal')
+        self.year_added_e.delete(0, tk.END)
+        self.year_added_e.insert(0, meta['year_added'])
+        self.year_added_e.configure(state='disabled')
+        self.type_sv.set("Single")
+
+        # TODO make listener for language Combobox, if vocal is set, change it to English, unless language is already set (not None or "")
+
+        # TODO think about possibilities: if loading in youtube playlist or long file, how to process those!  
+
     def get_annotations(self):
         clip = self.clipboard_get()
+        
         if 'youtube.com' in clip:
-            meta = md.download_annotations(link = clip)
+            raw_meta = dm.MusicDownload.download_annotations(link = clip)
+            print(raw_meta)
+            meta = self.MDB.raw_to_formatted_metadata(raw_meta)
             print(meta)
+            self.set_add_song_values(meta = meta, youtube_link = clip)
+            
+            
             # TODO look in update_database metadata_to_database function for how to extract meta info and put it into the GUI
             # TODO from GUI, change meta dictionary and pass to metadata_to_database while also just downloading without extracting meta info again! 
         else:
@@ -237,23 +273,6 @@ if __name__ == '__main__':
 # TODO 'He even covers running the GUI as a separate program with sockets.' book --> https://www.amazon.com/Programming-Python-Powerful-Object-Oriented/dp/0596158106 
 ## give it a look for another solution, if it means it doesn't need us checking a queue every x milliseconds then that sounds like a win to me! 
 
-# TODO look at TODO in test-queue.py under utils/ 
 
 
-# TODO look into this presentation tutorial by David Beazley: http://www.dabeaz.com/usenix2009/concurrent/ 
-## check this before - only at synch/locking part?: https://www.techbeamers.com/python-multithreading-concepts/#python-multithreading-8211-synchronizing-threads 
-
-
-# TODO look into threading Queues more? : https://www.youtube.com/watch?v=NwH0HvMI4EA
-# TODO look into threading locking/synchronizing more? : https://www.youtube.com/watch?v=SDAkQq17S2Q
-## https://stackoverflow.com/questions/52073973/how-do-i-update-the-gui-from-another-thread-using-python
-# TODO learn more about fundamental threading? 
-
-# TODO worst case scenario: run GUI and player in same scripts
-## however, solving this here would also solve progressbar functionality for MEA project! 
-
-
-
-# TODO folders entry: specialized function to change folder globally, which simultaneously moves all currently stored files! 
-
-# TODO save this project on Github! also to safeguard music database JSOn and playlists 
+# TODO folders entry: specialized function to change folder globally, which simultaneously moves all currently stored files! (pathlib? shutil?) 

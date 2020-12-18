@@ -7,31 +7,13 @@ import numpy as np
 from datetime import datetime
 from utils.get_bpm import beats_per_minute
 
-class Music_database:
+class MusicDatabase:
     objects = []
     def __init__(self):
         self.database_path = 'music_database.json'
         self.rating = 75
         self.sophisticated = 50
-        Music_database.objects.append(self)
-        
-    # def mp3_downloads_to_database(self, ):
-    #     mdb = self.load_database(self.database_path)
-
-    #     c = 0
-    #     mp3s = glob.glob("music/*.mp3")
-    #     for i in range(0, len(mp3s)):
-    #         mp3s[i] = mp3s[i][6:-4]
-    #         if mp3s[i] not in list(mdb['filepath']):
-    #             c += 1
-    #             mdb = self.append_mp3_to_database(mp3s[i], mdb)
-
-    #     self.save_database()
-
-    #     if c > 0:
-    #         self.Mbox('Messagebox', 'Check the last {} rows of the music database.'.format(c), 0)
-    #     else: 
-    #         self.Mbox('Messagebox', 'Music database is up to date'.format(c), 0)
+        MusicDatabase.objects.append(self)
 
     def load_database(self, database_path):
         return pd.read_json(database_path)
@@ -40,6 +22,10 @@ class Music_database:
         mdb.to_json(self.database_path)
 
     def append_mp3_to_database(self, mp3, db):
+        """
+        DEPRECATED ? 
+        """
+
         audio = eyed3.load("music/{}.mp3".format(mp3))
         album = None if audio.tag.album == None else audio.tag.album
         genre = None if audio.tag.genre == None else audio.tag.genre
@@ -76,7 +62,7 @@ class Music_database:
         if isinstance(old_val, list) & isinstance(new_val, list):
             return list(set().union(old_val, new_val))
 
-    def metadata_to_database(self, meta):
+    def raw_to_formatted_metadata(self, meta):
         if meta['alt_title'] != None:
             song = meta['alt_title']
         else:
@@ -94,42 +80,35 @@ class Music_database:
         
         filename = '{} - {}'.format(artist, song)
 
-        # TODO try these first 
-        # set pre-download annotation options in a dict and pass them to a variable called pre_dl_meta in the metadata_to_database function
-        ## type 
-        ## vocal
-        ## language = 'english' if vocal != None else None
-        ## instrument
-        ## genre
-        ## emotion
-        ## rationale
-        ## sophisticated
-        ## rating
-        ## 
-
         # remove after testing
         pre_dl_meta = {
             'type': None,
             'vocal': None,
-            'language': None,
+            'language': None, # TODO in GUI: language = 'english' if vocal != None else None
             'instrument': None,
             'genre': None,
             'emotion': None,
             'rationale': None}
 
-        new_values = {
+        new_meta = {
+            'title': meta['title'],
             'song': song, 
             'artist': artist, 
             'filepath': filename,
             'duration': meta['duration'], 
             'album': meta['album'], 
             'year_added': datetime.today().year, 
-            'rating': self.rating, 
-            'sophisticated': self.sophisticated, 
+            'rating': self.rating, # TODO make sure value for rating comes from GUI
+            'sophisticated': self.sophisticated, # TODO make sure value for sophisticated comes from GUI
             'release_year': int(meta['upload_date'][0:4]),
             'youtube_url': meta['webpage_url'],
             'bpm': None,
             **pre_dl_meta}
+
+        return new_meta
+
+    def metadata_to_database(self, meta):
+        filename = meta['filepath']
 
         # check if song in database
         db = self.load_database(self.database_path)
@@ -137,24 +116,24 @@ class Music_database:
             row_index = list(db['filepath']).index(filename)
             for col in db.columns:
                 old_value = db.at[row_index, col]
-                print('col:', col, '- row:', row_index, '- old_value:', old_value, '- new_value:', new_values[col])
+                print('col:', col, '- row:', row_index, '- old_value:', old_value, '- new_value:', meta[col])
                 if pd.isna(old_value):
                     continue # if old value is nothing, new_value will be added
-                elif not pd.isna(old_value) and new_values[col] == None:
-                    new_values[col] = old_value # if old value is something, and new_value is nothing - keep old_value 
-                elif not pd.isna(old_value) and new_values[col] != None:
+                elif not pd.isna(old_value) and meta[col] == None:
+                    meta[col] = old_value # if old value is something, and new_value is nothing - keep old_value 
+                elif not pd.isna(old_value) and meta[col] != None:
                     # if old and new values are something, check if same 
-                    if old_value != new_values[col]:
-                        new_values[col] = self.update_value(col, old_value, new_values[col]) 
+                    if old_value != meta[col]:
+                        meta[col] = self.update_value(col, old_value, meta[col]) 
             
             # drop old row 
             db = db.drop([row_index])
         else:
             # calculate and add bpm for new songs 
-            new_values['bpm'] = beats_per_minute(filename = 'wav_music/{}.wav'.format(meta['title'])).bpm
+            meta['bpm'] = beats_per_minute(filename = 'wav_music/{}.wav'.format(meta['title'])).bpm
 
         # append new/updated row 
-        db = db.append(new_values, ignore_index = True)
+        db = db.append(meta, ignore_index = True)
         self.save_database(db)
     
 
