@@ -63,46 +63,108 @@ class MusicDatabase:
             return list(set().union(old_val, new_val))
 
     def raw_to_formatted_metadata(self, meta):
-        if meta['alt_title'] != None:
-            song = meta['alt_title']
-        else:
-            if ' - ' in meta['title']:
-                song = meta['title'].split(' - ')[1]
-            else: 
-                song = meta['title']
-        if meta['artist'] != None:
-            artist = meta['artist']
-        else:
-            if ' - ' in meta['title']:
-                artist = meta['title'].split(' - ')[0]
-            else:
-                artist = meta['title']
+        # XXX do not use meta['alt_title'] 
+        filename = meta['title'] # NOTE use original title in database for unique ness
         
-        filename = '{} - {}'.format(artist, song)
+        # process [...] (...) in title
+        edges = [('[',']'), ('(',')')]
+        annotations = ['cover', 'remix']
+        feats = ['feat.', 'feat', 'ft.', 'ft']
+        for edge in edges:
+            if edge[0] in meta['title'] and edge[1] in meta['title']:
+                i1 = meta['title'].find(edge[0])
+                i2 = meta['title'].find(edge[1]) + 1
+                before = meta['title'][:i1].strip()
+                between = meta['title'][i1:i2]
+                after = meta['title'][i2:]
 
-        # remove after testing
+                for anno in annotations:
+                    if anno in between.lower():
+                        song_annotation = between
+                for feat in feats:
+                    if feat in between.lower():
+                        artist_annotation = between # TODO handle individual artists when feat found inside of edges
+                meta['title'] = before + after
+
+        # process feat and artists till END or -| in title
+        feat_ends = [' - ', ' | ']
+        feat_seps = [' & ', ' + ']
+        artists = []
+        for feat in feats:
+            if feat in meta['title'].lower():
+                i1 = meta['title'].find(feat)
+                i1_feat = i1 + len(feat)
+
+                for end in feat_ends:
+                    if end in meta['title'][i1_feat:]:
+                        i2 = meta['title'][i1_feat:].find(end) + 1
+                        break
+                    else:
+                        i2 = len(meta['title'])
+                
+                between = meta['title'][i1_feat:i1_feat + i2]
+                before = meta['title'][:i1].strip()
+                after = meta['title'][i2:len(meta['title'])]
+
+                for sep in feat_seps:
+                    if sep in between.lower():
+                        for artist in between.split(sep):
+                            artists.append(artist.strip())
+
+                meta['title'] = before + after
+
+        # get artist and song
+        seps = [' - ', ' – ']
+        for sep in seps:
+            if sep in meta['title']:
+                artists.insert(0, meta['title'].split(' - ')[1]) # insert main artist to artists on first pos 
+                song = meta['title'].split(' - ')[0]
+                break
+            else:
+                artists.insert(0, meta['title'])
+                song = meta['title']
+
+        try:
+            song += ' ' + song_annotation
+        except NameError:
+            pass
+        try:
+            artist += ' ' + artist_annotation
+        except NameError:
+            pass 
+
+        print('original:', filename)
+        print('Parsed title:', meta['title'])
+        print('song', song)
+        print('artist(s):', *artists, sep = ", ")  
+
+        # TODO artists IS A LIST, make sure in RETURN that that still goes right in GUI
+
+        # TODO either create that if metadata not in db or db column not in metadata its okay when metadata -> db is called 
         pre_dl_meta = {
-            'type': None,
+            'type': 'Single', # NOTE default
+            'rating': 75, # NOTE default
+            'sophisticated': 50, # NOTE default
+
             'vocal': None,
-            'language': None, # TODO in GUI: language = 'english' if vocal != None else None
+            'language': None,
             'instrument': None,
             'genre': None,
             'emotion': None,
+            'bpm': None,
             'rationale': None}
 
         new_meta = {
             'title': meta['title'],
             'song': song, 
-            'artist': artist, 
+            'artist': artists, 
             'filepath': filename,
             'duration': meta['duration'], 
             'album': meta['album'], 
             'year_added': datetime.today().year, 
-            'rating': self.rating, # TODO make sure value for rating comes from GUI
-            'sophisticated': self.sophisticated, # TODO make sure value for sophisticated comes from GUI
             'release_year': int(meta['upload_date'][0:4]),
             'youtube_url': meta['webpage_url'],
-            'bpm': None,
+            
             **pre_dl_meta}
 
         return new_meta
