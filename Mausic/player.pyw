@@ -114,7 +114,7 @@ class Player():
     def on_press(self, key):
         """ When a key is pressed """
         vk = self.get_vk(key)  # Get the key's vk
-        print(key, vk)
+        # print(key, vk)
         self.current_vks.add(vk)  # Add it to the set of currently pressed keys
 
         for combination in self.combination_to_function:  # Loop through each combination
@@ -126,8 +126,11 @@ class Player():
     def on_release(self, key):
         """ When a key is released """
         vk = self.get_vk(key)  # Get the key's vk
-        print(key, vk)
-        self.current_vks.remove(vk)  # Remove it from the set of currently pressed keys
+        # print(key, vk)
+        try:
+            self.current_vks.remove(vk)  # Remove it from the set of currently pressed keys
+        except KeyError:
+            pass
 
     def check_next_song(self):
         if mixer.music.get_busy() == False:

@@ -6,14 +6,18 @@ import numpy as np
 
 from datetime import datetime
 from utils.get_bpm import beats_per_minute
+from utils.top_level_locator import top_level_path
+from pathlib import Path
+from collections import Counter
 
 class MusicDatabase:
     objects = []
     def __init__(self):
-        self.database_path = 'music_database.json'
+        self.database_path = Path(top_level_path() / 'data' / 'music_database.json')
         self.rating = 75
         self.sophisticated = 50
         MusicDatabase.objects.append(self)
+        self.db = self.load_database(self.database_path)
 
     def load_database(self, database_path):
         return pd.read_json(database_path)
@@ -34,7 +38,7 @@ class MusicDatabase:
         artist = None if audio.tag.artist == None else audio.tag.artist
         rating = self.rating
         sophisticated = self.sophisticated
-        year_added = datem = datetime.today().year
+        year_added = int('{}{}{}'.format(datetime.today().year, datetime.today().month, datetime.today().day))
         if ' - ' in mp3:
             artist = mp3.split(' - ')[0] if audio.tag.artist == None else audio.tag.artist
             song = mp3.split(' - ')[1] if audio.tag.title == None else audio.tag.title
@@ -45,51 +49,69 @@ class MusicDatabase:
         return db.append(row, ignore_index = True)
 
     def update_value(self, col, old_val, new_val): # self.Mbox('Messagebox', 'Song already in database.', 0)
-        if isinstance(old_val, int) & isinstance(new_val, int):
+        if isinstance(old_val, int) and isinstance(new_val, int):
             return new_val
-        if not isinstance(new_val, int) & isinstance(old_val, int):
-            self.Mbox('Messagebox', 'Trying to replace int value with string', 0)
-        if not isinstance(old_val, int) & isinstance(new_val, int):
-            self.Mbox('Messagebox', 'Trying to replace string value with int', 0)
-        if isinstance(old_val, str) & isinstance(new_val, str):
+        if not isinstance(new_val, int) and isinstance(old_val, int):
+            self.Mbox('Messagebox', 'In column: {}, trying to replace old int value: {}, with new string value: {}'.format(col, old_val, new_val), 0)
+        if not isinstance(old_val, int) and isinstance(new_val, int):
+            self.Mbox('Messagebox', 'In column: {}, trying to replace old str value: {}, with new int value: {}'.format(col, old_val, new_val), 0)
+        if isinstance(old_val, str) and isinstance(new_val, str):
             return new_val
-        if isinstance(old_val, str) & isinstance(new_val, list):
+        if isinstance(old_val, str) and isinstance(new_val, list):
             if old_val not in new_val:
                 return new_val.append(old_val)
-        if isinstance(old_val, list) & isinstance(new_val, str):
+        if isinstance(old_val, list) and isinstance(new_val, str):
             if new_val not in old_val:
                 return old_val.append(new_val)
-        if isinstance(old_val, list) & isinstance(new_val, list):
+        if isinstance(old_val, list) and isinstance(new_val, list):
             return list(set().union(old_val, new_val))
 
     def raw_to_formatted_metadata(self, meta):
         # XXX do not use meta['alt_title'] 
         filename = meta['title'] # NOTE use original title in database for unique ness
-        
-        # process [...] (...) in title
+
+        # process [] () in title       
         edges = [('[',']'), ('(',')')]
-        annotations = ['cover', 'remix']
-        feats = ['feat.', 'feat', 'ft.', 'ft']
-        for edge in edges:
-            if edge[0] in meta['title'] and edge[1] in meta['title']:
-                i1 = meta['title'].find(edge[0])
-                i2 = meta['title'].find(edge[1]) + 1
-                before = meta['title'][:i1].strip()
-                between = meta['title'][i1:i2]
-                after = meta['title'][i2:]
-
-                for anno in annotations:
-                    if anno in between.lower():
-                        song_annotation = between
-                for feat in feats:
-                    if feat in between.lower():
-                        artist_annotation = between # TODO handle individual artists when feat found inside of edges
-                meta['title'] = before + after
-
-        # process feat and artists till END or -| in title
-        feat_ends = [' - ', ' | ']
+        annotations = ["Single", "EP", "Cover", "Remix", "Mashup"]
+        feats = [' feat. ', ' feat ', ' ft. ', ' ft ']
+        # process feat - END in title
+        feat_ends = [' - ', ' | ', '!'] 
         feat_seps = [' & ', ' + ']
+        featuring = None
         artists = []
+        loops = 0
+        song_type = 'Single'
+        # PROCESS ALL EDGES TO MAKE TITLE EASIER TO PARSE
+        for edge in edges:
+            if Counter(meta['title'])[edge[0]] == Counter(meta['title'])[edge[1]]:
+                loops += Counter(meta['title'])[edge[0]]
+            for _ in range(max(1, loops)):
+                if edge[0] in meta['title'] and edge[1] in meta['title']:
+                    i1 = meta['title'].find(edge[0])
+                    i2 = meta['title'].find(edge[1]) + 1
+                    before = meta['title'][:i1].strip()
+                    between = meta['title'][i1:i2]
+                    after = meta['title'][i2:]
+
+                    for anno in annotations:
+                        if anno.lower() in between.lower():
+                            song_annotation = between
+                            song_type = anno
+                    for feat in feats:
+                        if feat in between.lower():
+                            artist_annotation = between # TODO handle individual artists when feat found inside of edges
+                    meta['title'] = before + after
+
+                    # CHECK IF ANY FEATURINGS IN EDGES AND PROCESS ARTISTS HERE
+                    
+                    if any(feat in ' {} '.format(between[1:len(between)-1].lower()) for feat in feats):
+                        featuring = ' {} '.format(between[1:len(between)-1]).lower()
+                    for end in feat_ends:
+                        if meta['title'][:len(end)] == end:
+                            meta['title'] = meta['title'][len(end):]
+                        if meta['title'][len(end):] == end:
+                            meta['title'] = meta['title'][:len(end)]
+        
         for feat in feats:
             if feat in meta['title'].lower():
                 i1 = meta['title'].find(feat)
@@ -97,52 +119,78 @@ class MusicDatabase:
 
                 for end in feat_ends:
                     if end in meta['title'][i1_feat:]:
-                        i2 = meta['title'][i1_feat:].find(end) + 1
+                        i2 = meta['title'][i1_feat:].find(end)
+                        i2_end = i2 + len(end)
+                        if end == ' - ':
+                            i2_end = i2
                         break
                     else:
                         i2 = len(meta['title'])
+                        i2_end = len(meta['title'])
                 
                 between = meta['title'][i1_feat:i1_feat + i2]
                 before = meta['title'][:i1].strip()
-                after = meta['title'][i2:len(meta['title'])]
+                after = meta['title'][i1_feat:][i2_end:len(meta['title'])]
 
                 for sep in feat_seps:
                     if sep in between.lower():
                         for artist in between.split(sep):
                             artists.append(artist.strip())
+                if not any([sep in between.lower() for sep in feat_seps]):
+                    artists.append(between)
 
                 meta['title'] = before + after
+            
+            if featuring != None and feat in featuring:
+                i1 = featuring.find(feat)
+                i1_feat = i1 + len(feat)
+                i2_end = len(featuring)
+                between = featuring[i1_feat:i1_feat + i2]
+                # NOTE here go for sep in seps loop if sep found with feat inside () [] 
+                artists.append(between.strip().title())
 
-        # get artist and song
-        seps = [' - ', ' – ']
+        seps = [' - ', ' – ', ': ', ' & ']
         for sep in seps:
             if sep in meta['title']:
-                artists.insert(0, meta['title'].split(' - ')[1]) # insert main artist to artists on first pos 
-                song = meta['title'].split(' - ')[0]
+                artist = meta['title'].split(sep)[0]
+                for sep2 in seps:
+                    if sep2 in artist:
+                        artists.append(artist.split(sep2)[1])
+                        artist = artist.split(sep2)[0]
+                try:
+                    artist += ' ' + artist_annotation
+                except NameError:
+                    pass 
+                artists.insert(0, artist) # insert main artist to artists on first pos 
+                song = meta['title'].split(sep)[1]
                 break
             else:
-                artists.insert(0, meta['title'])
-                song = meta['title']
+                if not any(sep in meta['title'] for sep in seps):
+                    artist = meta['title']
+                    try:
+                        artist += ' ' + artist_annotation
+                    except NameError:
+                        pass 
+                    artists.insert(0, artist)
+                    song = meta['title']
+                    break
 
         try:
             song += ' ' + song_annotation
+            song_annotation = ''
         except NameError:
             pass
-        try:
-            artist += ' ' + artist_annotation
-        except NameError:
-            pass 
 
         print('original:', filename)
         print('Parsed title:', meta['title'])
-        print('song', song)
-        print('artist(s):', *artists, sep = ", ")  
+        print('song:', song)
+        print('artist(s):', *artists, sep = ", ") 
+        print('\n')
 
-        # TODO artists IS A LIST, make sure in RETURN that that still goes right in GUI
 
-        # TODO either create that if metadata not in db or db column not in metadata its okay when metadata -> db is called 
+
         pre_dl_meta = {
-            'type': 'Single', # NOTE default
+            'type': song_type, # NOTE default
             'rating': 75, # NOTE default
             'sophisticated': 50, # NOTE default
 
@@ -161,7 +209,7 @@ class MusicDatabase:
             'filepath': filename,
             'duration': meta['duration'], 
             'album': meta['album'], 
-            'year_added': datetime.today().year, 
+            'year_added': int('{}{}{}'.format(datetime.today().year, datetime.today().month, datetime.today().day)), 
             'release_year': int(meta['upload_date'][0:4]),
             'youtube_url': meta['webpage_url'],
             
@@ -171,36 +219,44 @@ class MusicDatabase:
 
     def metadata_to_database(self, meta):
         filename = meta['filepath']
-
+        dropped = False
+        db = self.db
         # check if song in database
-        db = self.load_database(self.database_path)
         if filename in list(db['filepath']):
             row_index = list(db['filepath']).index(filename)
             for col in db.columns:
                 old_value = db.at[row_index, col]
-                print('col:', col, '- row:', row_index, '- old_value:', old_value, '- new_value:', meta[col])
-                if pd.isna(old_value):
-                    continue # if old value is nothing, new_value will be added
-                elif not pd.isna(old_value) and meta[col] == None:
-                    meta[col] = old_value # if old value is something, and new_value is nothing - keep old_value 
-                elif not pd.isna(old_value) and meta[col] != None:
-                    # if old and new values are something, check if same 
-                    if old_value != meta[col]:
-                        meta[col] = self.update_value(col, old_value, meta[col]) 
-            
+                # print('col:', col, '- row:', row_index, '- old_value:', old_value, '- new_value:', meta[col])
+                try:
+                    if not pd.isna(old_value).all() and old_value != [] and meta[col] == None:
+                        meta[col] = old_value # if old value is something, and new_value is nothing - keep old_value 
+                    elif not pd.isna(old_value).all() and old_value != [] and meta[col] != None:
+                        # if old and new values are something, check if same 
+                        if old_value != meta[col]:
+                            meta[col] = self.update_value(col, old_value, meta[col])
+                except AttributeError:
+                    if not pd.isna(old_value) and old_value != [] and meta[col] == None:
+                        meta[col] = old_value # if old value is something, and new_value is nothing - keep old_value 
+                    elif not pd.isna(old_value) and old_value != [] and meta[col] != None:
+                        # if old and new values are something, check if same 
+                        if old_value != meta[col]:
+                            meta[col] = self.update_value(col, old_value, meta[col])
             # drop old row 
             db = db.drop([row_index])
-        else:
-            # calculate and add bpm for new songs 
-            meta['bpm'] = beats_per_minute(filename = 'wav_music/{}.wav'.format(meta['title'])).bpm
+            dropped = True
+        
+        # TODO calculate BPM when the .wavs or .mp3s get downloaded (check if get_bpm can handle both extensions)
+        # calculate and add bpm for new songs 
+        # meta['bpm'] = beats_per_minute(filename = 'wav_music/{}.wav'.format(meta['title'])).bpm
 
         # append new/updated row 
         db = db.append(meta, ignore_index = True)
         self.save_database(db)
-    
+        return dropped
 
-
-        # TODO after download: move wav from dl folder to music folder? 
+    def check_duplicate_song(self, youtube_url):
+        if youtube_url in list(self.db['youtube_url']):
+            return True
 
     def Mbox(self, title, text, style):
         return ctypes.windll.user32.MessageBoxW(0, text, title, style+64)

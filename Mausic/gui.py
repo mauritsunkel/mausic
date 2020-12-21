@@ -1,13 +1,27 @@
 import tkinter as tk
 import player
 import queue
+import sys
+import os
 import update_database as ud
 import download_music as dm 
+import ctypes
 
 from threading import Thread, Lock
-
+from tkinter import messagebox
 from tkinter import ttk 
+from utils.top_level_locator import top_level_path
+from pathlib import Path
 
+# tell windows that python(w) is a host and not an application before it gets grouped as such
+# therefore TASKBAR ICON will be set by tkinter now
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('arbitrary string')
+
+# allows application to work without console in the background (pythonw.exe)
+## it prevents print() and sys.stdout write calls which apparently block py2 and py3 in pyw mode 
+if sys.executable.endswith("pythonw.exe"):
+    sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.path.join(os.getenv("TEMP"), "stderr-"+os.path.basename(sys.argv[0])), "w")
 
 class UserInterface(tk.Frame):
     objects = []
@@ -62,18 +76,18 @@ class UserInterface(tk.Frame):
         except:
             pass
         
-
-        # TODO add func: on click song or artist label -> swap entry values 
         self.song_l = tk.Label(self.add_song_lf, text = "Song")
         self.song_e = tk.Entry(self.add_song_lf)
+        self.song_l.bind('<Button-1>', self.switch_song_artists)
         self.artist_l = tk.Label(self.add_song_lf, text = "Artist(s)")
         self.artist_e = tk.Entry(self.add_song_lf)
+        self.artist_l.bind('<Button-1>', self.switch_song_artists)
         self.genre_l = tk.Label(self.add_song_lf, text = "Genre(s)")
         self.genre_f = tk.Frame(self.add_song_lf)
-        self.genre_f.grid(row = 8, column = 1)
+        self.genre_f.grid(row = 8, column = 1, sticky = 'w')
         self.genre_sb = tk.Scrollbar(self.genre_f)
         self.genre_sb.pack(side = 'right', fill = 'y')
-        self.genre_lb = tk.Listbox(self.genre_f, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.genre_sb.set, selectmode = "multiple")
+        self.genre_lb = tk.Listbox(self.genre_f, exportselection = 0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.genre_sb.set, selectmode = "multiple")
         self.genre_values = sorted(["Electric", "Jazz", "Comedy", "Pop", "Singer songwriter", "Rock", "Metal", "Soul", "House"])
         for i in range(0, len(self.genre_values)):
             self.genre_lb.insert(i, self.genre_values[i])
@@ -104,11 +118,11 @@ class UserInterface(tk.Frame):
 
         
         self.emotion_f = tk.Frame(self.add_song_lf)
-        self.emotion_f.grid(row = 8, column = 3)
+        self.emotion_f.grid(row = 8, column = 3, sticky = 'w')
         self.emotion_sb = tk.Scrollbar(self.emotion_f)
         self.emotion_sb.pack(side = 'right', fill = 'y')
-        self.emotion_lb = tk.Listbox(self.emotion_f, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.emotion_sb.set, selectmode = "multiple")
-        self.emotion_values = sorted(["Happy", "Sad", "Love", "Chill", "Hard"])
+        self.emotion_lb = tk.Listbox(self.emotion_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.emotion_sb.set, selectmode = "multiple")
+        self.emotion_values = sorted(["Happy", "Sad", "Love", "Chill", "Chaos", "Gaming", "Focus", "Visualization"])
         for i in range(0, len(self.emotion_values)):
             self.emotion_lb.insert(i, self.emotion_values[i])
         self.emotion_lb.pack(side = 'left')
@@ -116,22 +130,22 @@ class UserInterface(tk.Frame):
 
         self.instrument_l = tk.Label(self.add_song_lf, text = "Instrument(s)")
         self.instrument_f = tk.Frame(self.add_song_lf)
-        self.instrument_f.grid(row = 8, column = 5)
+        self.instrument_f.grid(row = 8, column = 5, sticky = 'w')
         self.instrument_sb = tk.Scrollbar(self.instrument_f)
         self.instrument_sb.pack(side = 'right', fill = 'y')
-        self.instrument_lb = tk.Listbox(self.instrument_f, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.instrument_sb.set, selectmode = "multiple")
-        self.listbox_values = ["Guitar", "Piano"]
-        for i in range(0, len(self.listbox_values)):
-            self.instrument_lb.insert(i, self.listbox_values[i])
+        self.instrument_lb = tk.Listbox(self.instrument_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.instrument_sb.set, selectmode = "multiple")
+        self.instrument_values = ["Guitar", "Piano", 'Flute', 'Drum', 'Harmonica']
+        for i in range(0, len(self.instrument_values)):
+            self.instrument_lb.insert(i, self.instrument_values[i])
         self.instrument_lb.pack(side = 'left')
         self.instrument_sb.config(command = self.instrument_lb.yview)
 
-        self.vocal_l = tk.Label(self.add_song_lf, text = "Vocal(s)") # todo grid row 8 col 6
+        self.vocal_l = tk.Label(self.add_song_lf, text = "Vocal(s)")
         self.vocal_f = tk.Frame(self.add_song_lf)
-        self.vocal_f.grid(row = 8, column = 7)
+        self.vocal_f.grid(row = 8, column = 7, sticky = 'w')
         self.vocal_sb = tk.Scrollbar(self.vocal_f)
         self.vocal_sb.pack(side = 'right', fill = 'y')
-        self.vocal_lb = tk.Listbox(self.vocal_f, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.vocal_sb.set, selectmode = "multiple")
+        self.vocal_lb = tk.Listbox(self.vocal_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.vocal_sb.set, selectmode = "multiple")
         self.vocal_values = ["Female", "Male", "Duo", "Trio", "Quartet", "Barbershop", "Multiple", "Acapella"]
         for i in range(0, len(self.vocal_values)):
             self.vocal_lb.insert(i, self.vocal_values[i])
@@ -145,43 +159,49 @@ class UserInterface(tk.Frame):
         self.year_added_l = tk.Label(self.add_song_lf, text = "Year added")
         self.year_added_e = tk.Entry(self.add_song_lf, state = 'disabled')
 
-        self.add_database_b = tk.Button(self.add_song_lf, text = "Add to database")
-
+        self.add_database_b = tk.Button(self.add_song_lf, text = "Add to database", command = self.add_song_to_database)
 
         self.song_l.grid(row = 0, column = 0, sticky = 'e')
-        self.song_e.grid(row = 0, column = 1)
+        self.song_e.grid(row = 0, column = 1, sticky = 'w')
         self.artist_l.grid(row = 1, column = 0, sticky = 'e')
-        self.artist_e.grid(row = 1, column = 1)
+        self.artist_e.grid(row = 1, column = 1, sticky = 'w')
         self.album_l.grid(row = 2, column = 0, sticky = 'e')
-        self.album_e.grid(row = 2, column = 1)
+        self.album_e.grid(row = 2, column = 1, sticky = 'w')
         self.release_year_l.grid(row = 3, column = 0, sticky = 'e')
-        self.release_year_e.grid(row = 3, column = 1)
+        self.release_year_e.grid(row = 3, column = 1, sticky = 'w')
         self.rating_l.grid(row = 0, column = 2, rowspan = 2, sticky = 'e')
-        self.rating_s.grid(row = 0, column = 3, rowspan = 2)
+        self.rating_s.grid(row = 0, column = 3, rowspan = 2, sticky = 'w')
         self.sophisticated_l.grid(row = 2, column = 2, rowspan = 2, sticky = 'e')
-        self.sophisticated_s.grid(row = 2, column = 3, rowspan = 2)
+        self.sophisticated_s.grid(row = 2, column = 3, rowspan = 2, sticky = 'w')
         self.add_song_user_l.grid(row = 0, column = 4, columnspan = 3)
         
         self.genre_l.grid(row = 8, column = 0, sticky = 'e')
         self.emotion_l.grid(row = 8, column = 2, sticky = 'e')
 
         self.type_l.grid(row = 2, column = 6, sticky = 'e')
-        self.type_cb.grid(row = 2, column = 7)
+        self.type_cb.grid(row = 2, column = 7, sticky = 'w')
         self.vocal_l.grid(row = 8, column = 6, sticky = 'e')
         self.language_l.grid(row = 3, column = 6, sticky = 'e')
-        self.language_cb.grid(row = 3, column = 7)
+        self.language_cb.grid(row = 3, column = 7, sticky = 'w')
         self.link_l.grid(row = 3, column = 4, sticky = 'e')
-        self.link_e.grid(row = 3, column = 5)
+        self.link_e.grid(row = 3, column = 5, sticky = 'w')
         self.duration_l.grid(row = 1, column = 4, sticky = 'e')
-        self.duration_e.grid(row = 1, column = 5)
+        self.duration_e.grid(row = 1, column = 5, sticky = 'w')
         self.year_added_l.grid(row = 2, column = 4, sticky = 'e')
-        self.year_added_e.grid(row = 2, column = 5)
+        self.year_added_e.grid(row = 2, column = 5, sticky = 'w')
         self.instrument_l.grid(row = 8, column = 4, sticky = 'e')
 
         
 
         self.add_database_b.grid(row = 0, column = 7)
 
+    def switch_song_artists(self, *args):
+        artists = self.song_e.get()
+        song = self.artist_e.get()
+        self.song_e.delete(0, tk.END)
+        self.artist_e.delete(0, tk.END)
+        self.song_e.insert(0, song)
+        self.artist_e.insert(0, artists)
 
     def set_vocal_default(self, *args):
         if self.language_cb.get() == '':
@@ -198,9 +218,48 @@ class UserInterface(tk.Frame):
         self.parent.attributes("-topmost", False)
         # XXX self.lift() # does not work? 
 
+    def add_song_to_database(self):
+        meta = {}
+        meta['song'] = self.song_e.get()
+        artists = []
+        if ', ' in self.artist_e.get():
+            for artist in self.artist_e.get().split(', '):
+                artists.append(artist)
+        else:
+            artists = [self.artist_e.get()]
+        meta['artist'] = artists
+        meta['album'] = self.album_e.get()
+        meta['release_year'] = int(self.release_year_e.get())
+        meta['duration'] = int(self.duration_e.get())
+        meta['year_added'] = int(self.year_added_e.get())
+        meta['youtube_url'] = self.link_e.get()
+        meta['type'] = self.type_cb.get()
+        meta['language'] = self.language_cb.get()
+        meta['genre'] = [self.genre_values[i] for i in self.genre_lb.curselection()]
+        meta['emotion'] = [self.emotion_values[i] for i in self.emotion_lb.curselection()]
+        meta['instrument'] = [self.instrument_values[i] for i in self.instrument_lb.curselection()]
+        meta['vocal'] = [self.vocal_values[i] for i in self.vocal_lb.curselection()]
+        meta['rating'] = int(self.rating_s.get())
+        meta['sophisticated'] = int(self.sophisticated_s.get())
+
+        meta['title'] = self.song_title
+        meta['filepath'] = self.song_filepath
+        meta['bpm'] = None # NOTE will be calculated in update function
+        meta['rationale'] = None # NOTE placeholder for future possibly 
+        meta['downloaded'] = False
+
+        # add song to db, if successfull print message
+        if UserInterface.MDB.metadata_to_database(meta):
+            self.add_song_user_l.config(text = "Existing song metadata updated!", fg = 'green')
+        else:
+            self.add_song_user_l.config(text = "Upload successful!", fg = 'green')
+            
+
     def set_add_song_values(self, meta, youtube_link):
-        # TODO get max len of all artist string comma separated or song title and put that n + 5 as width of the entry widgets in the first column (artist,song,album,release_year)
-        width = max(len(meta['song']), len(', '.join(meta['artist'])))
+        if meta['album'] != None:
+            width = max(len(meta['song']), len(', '.join(meta['artist'])), len(meta['album'])) + 3
+        else:
+            width = max(len(meta['song']), len(', '.join(meta['artist']))) + 3
 
         self.link_e.configure(state='normal')
         self.link_e.delete(0, tk.END)
@@ -228,11 +287,12 @@ class UserInterface(tk.Frame):
         self.year_added_e.delete(0, tk.END)
         self.year_added_e.insert(0, meta['year_added'])
         self.year_added_e.configure(state='disabled')
-        self.type_sv.set("Single")
+        self.type_sv.set(meta['type'])
 
-        # TODO make listener for language Combobox, if vocal is set, change it to English, unless language is already set (not None or "")
-
-        # TODO think about possibilities: if loading in youtube playlist or long file, how to process those!  
+        self.song_title = meta['title']
+        self.song_filepath = meta['filepath']
+        
+        self.add_song_user_l.config(text = "Adjust metadata if needed", fg = 'black')
 
     def get_annotations(self):
         clip = self.clipboard_get()
@@ -240,20 +300,26 @@ class UserInterface(tk.Frame):
         if 'youtube.com' in clip:
             raw_meta = dm.MusicDownload.download_annotations(link = clip)
             meta = self.MDB.raw_to_formatted_metadata(raw_meta)
-            print(meta)
+
+            if self.MDB.check_duplicate_song(raw_meta['webpage_url']):
+                if not messagebox.askokcancel(title = "Duplicate song!", message = "Do you want to update metadata of song?"):
+                    return
+
+            # if song longer than 10 minutes, validate by user
+            if meta['duration'] >= 10 * 60:
+                if not messagebox.askokcancel(title = "Long song!", message = "Is this a single song?"):
+                    return
+    
             self.set_add_song_values(meta = meta, youtube_link = clip)
 
-            # TODO check all metadata fields and change all GUI elements to its given values if existing 
 
-            # TODO create listener on self.song_l and self.artist_l when text changes, check how many characters and put all width of entries n_characters + 5 to always see all text 
-            
-            # TODO parse artists better, look for artists in feats etc 
-            
-            # TODO look in update_database metadata_to_database function for how to extract meta info and put it into the GUI
-            # TODO from GUI, change meta dictionary and pass to metadata_to_database while also just downloading without extracting meta info again! 
-            # TODO check if filename already in DOWNLOADED MUSIC, if so, alternate filename before downloading to download with correct name 
+
+
+
+
+            # TODO maybe put ydl link as filename such that its always unique? 
         else:
-            self.add_song_user_l.config(text = "No youtube link on clipboard", bg = 'red')
+            self.add_song_user_l.config(text = "No youtube link on clipboard", fg = 'red')
 
     def check_queue(self):
         try:
@@ -273,7 +339,7 @@ if __name__ == '__main__':
 
     root = tk.Tk() 
     root.title("Mausic")
-    # root.iconphoto(True, tk.PhotoImage(file = "resources\\figures\MEA_icon.png"))
+    root.iconphoto(True, tk.PhotoImage(file = Path(top_level_path() / 'data' / 'resources' / 'music_logo.png')))
     # root.configure(background = 'red')
     # root.geometry('1250x750')
     root.resizable(0, 0)
@@ -285,9 +351,4 @@ if __name__ == '__main__':
     root.mainloop()
 
 
-# TODO 'He even covers running the GUI as a separate program with sockets.' book --> https://www.amazon.com/Programming-Python-Powerful-Object-Oriented/dp/0596158106 
-## give it a look for another solution, if it means it doesn't need us checking a queue every x milliseconds then that sounds like a win to me! 
-
-
-
-# TODO folders entry: specialized function to change folder globally, which simultaneously moves all currently stored files! (pathlib? shutil?) 
+# TODO create view tree from current songs in JSON db
