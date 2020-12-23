@@ -65,7 +65,7 @@ class UserInterface(tk.Frame):
         self.player_lf.grid(row = 3, column = 0, rowspan = 3, columnspan = 1)
 
     def initialize_add_song(self):
-        self.add_song_listbox_height = 8
+        self.add_song_listbox_height = 12
 
         self.link_l = tk.Label(self.add_song_lf, text = "Link")
         self.link_e = tk.Entry(self.add_song_lf, state = 'disabled')
@@ -88,7 +88,7 @@ class UserInterface(tk.Frame):
         self.genre_sb = tk.Scrollbar(self.genre_f)
         self.genre_sb.pack(side = 'right', fill = 'y')
         self.genre_lb = tk.Listbox(self.genre_f, exportselection = 0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.genre_sb.set, selectmode = "multiple")
-        self.genre_values = sorted(["Electric", "Jazz", "Comedy", "Pop", "Singer songwriter", "Rock", "Metal", "Soul", "House"])
+        self.genre_values = sorted(["Electric", "Jazz", "Comedy", "Pop", "Singer songwriter", "Rock", "Metal", "Soul", "House", "Vocal", "Rap", "Country"])
         for i in range(0, len(self.genre_values)):
             self.genre_lb.insert(i, self.genre_values[i])
         self.genre_lb.pack(side = 'left')
@@ -122,7 +122,7 @@ class UserInterface(tk.Frame):
         self.emotion_sb = tk.Scrollbar(self.emotion_f)
         self.emotion_sb.pack(side = 'right', fill = 'y')
         self.emotion_lb = tk.Listbox(self.emotion_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.emotion_sb.set, selectmode = "multiple")
-        self.emotion_values = sorted(["Happy", "Sad", "Love", "Chill", "Chaos", "Gaming", "Focus", "Visualization"])
+        self.emotion_values = sorted(["Happy", "Sad", "Love", "Chill", "Chaos", "Gaming", "Focus", "Visualization", "Nostalgia"])
         for i in range(0, len(self.emotion_values)):
             self.emotion_lb.insert(i, self.emotion_values[i])
         self.emotion_lb.pack(side = 'left')
@@ -134,7 +134,7 @@ class UserInterface(tk.Frame):
         self.instrument_sb = tk.Scrollbar(self.instrument_f)
         self.instrument_sb.pack(side = 'right', fill = 'y')
         self.instrument_lb = tk.Listbox(self.instrument_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.instrument_sb.set, selectmode = "multiple")
-        self.instrument_values = ["Guitar", "Piano", 'Flute', 'Drum', 'Harmonica']
+        self.instrument_values = sorted(["Guitar", "Piano", 'Flute', 'Drum', 'Harmonica', 'Saxophone', 'Trumpet', 'Violin', 'Bass'])
         for i in range(0, len(self.instrument_values)):
             self.instrument_lb.insert(i, self.instrument_values[i])
         self.instrument_lb.pack(side = 'left')
@@ -351,4 +351,15 @@ if __name__ == '__main__':
     root.mainloop()
 
 
+
+
 # TODO create view tree from current songs in JSON db
+
+# TODO artists to add
+# wudstik 
+# the white stripes
+# gers pardoel
+# the police  
+# eminem 
+# billy talent 
+# daft punk

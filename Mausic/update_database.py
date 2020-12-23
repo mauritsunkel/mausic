@@ -69,6 +69,8 @@ class MusicDatabase:
     def raw_to_formatted_metadata(self, meta):
         # XXX do not use meta['alt_title'] 
         filename = meta['title'] # NOTE use original title in database for unique ness
+        meta['title'] = meta['title'].lower()
+
 
         # process [] () in title       
         edges = [('[',']'), ('(',')')]
@@ -76,11 +78,11 @@ class MusicDatabase:
         feats = [' feat. ', ' feat ', ' ft. ', ' ft ']
         # process feat - END in title
         feat_ends = [' - ', ' | ', '!'] 
-        feat_seps = [' & ', ' + ']
-        featuring = None
+        feat_seps = [' & ', ' + ', ' en ']
         artists = []
         loops = 0
         song_type = 'Single'
+        featuring = None
         # PROCESS ALL EDGES TO MAKE TITLE EASIER TO PARSE
         for edge in edges:
             if Counter(meta['title'])[edge[0]] == Counter(meta['title'])[edge[1]]:
@@ -94,26 +96,27 @@ class MusicDatabase:
                     after = meta['title'][i2:]
 
                     for anno in annotations:
-                        if anno.lower() in between.lower():
+                        if anno in between:
                             song_annotation = between
                             song_type = anno
+                            print(song_type)
                     for feat in feats:
-                        if feat in between.lower():
+                        if feat in between:
                             artist_annotation = between # TODO handle individual artists when feat found inside of edges
                     meta['title'] = before + after
 
                     # CHECK IF ANY FEATURINGS IN EDGES AND PROCESS ARTISTS HERE
                     
-                    if any(feat in ' {} '.format(between[1:len(between)-1].lower()) for feat in feats):
-                        featuring = ' {} '.format(between[1:len(between)-1]).lower()
+                    if any(feat in ' {} '.format(between[1:len(between)-1]) for feat in feats):
+                        featuring = ' {} '.format(between[1:len(between)-1])
                     for end in feat_ends:
                         if meta['title'][:len(end)] == end:
                             meta['title'] = meta['title'][len(end):]
                         if meta['title'][len(end):] == end:
                             meta['title'] = meta['title'][:len(end)]
-        
+
         for feat in feats:
-            if feat in meta['title'].lower():
+            if feat in meta['title']:
                 i1 = meta['title'].find(feat)
                 i1_feat = i1 + len(feat)
 
@@ -133,10 +136,10 @@ class MusicDatabase:
                 after = meta['title'][i1_feat:][i2_end:len(meta['title'])]
 
                 for sep in feat_seps:
-                    if sep in between.lower():
+                    if sep in between:
                         for artist in between.split(sep):
                             artists.append(artist.strip())
-                if not any([sep in between.lower() for sep in feat_seps]):
+                if not any([sep in between for sep in feat_seps]):
                     artists.append(between)
 
                 meta['title'] = before + after
@@ -146,10 +149,10 @@ class MusicDatabase:
                 i1_feat = i1 + len(feat)
                 i2_end = len(featuring)
                 between = featuring[i1_feat:i1_feat + i2]
-                # NOTE here go for sep in seps loop if sep found with feat inside () [] 
+                # NOTE here go for sep in seps loop if sep found with feat inside () [] - i.e. multiple artists inside edge with seps 
                 artists.append(between.strip().title())
 
-        seps = [' - ', ' – ', ': ', ' & ']
+        seps = [' - ', ' – ', ': ', ' & ', ' x ', ' by ']
         for sep in seps:
             if sep in meta['title']:
                 artist = meta['title'].split(sep)[0]
@@ -175,17 +178,25 @@ class MusicDatabase:
                     song = meta['title']
                     break
 
+        artists_titles = []
+        for artist in artists:
+            artists_titles.append(artist.title())
+
         try:
+            if song.startswith('"') and song.endswith('"'):
+                song = song[1:len(song)-1]
             song += ' ' + song_annotation
             song_annotation = ''
         except NameError:
             pass
 
-        print('original:', filename)
-        print('Parsed title:', meta['title'])
-        print('song:', song)
-        print('artist(s):', *artists, sep = ", ") 
+        print('original:', filename.title())
+        print('Parsed title:', meta['title'].title())
+        print('song:', song.title())
+        print('artist(s):', *artists_titles, sep = ", ") 
         print('\n')
+
+
 
 
 
@@ -204,8 +215,8 @@ class MusicDatabase:
 
         new_meta = {
             'title': meta['title'],
-            'song': song, 
-            'artist': artists, 
+            'song': song.title(), 
+            'artist': artists_titles, 
             'filepath': filename,
             'duration': meta['duration'], 
             'album': meta['album'], 
@@ -252,6 +263,7 @@ class MusicDatabase:
         # append new/updated row 
         db = db.append(meta, ignore_index = True)
         self.save_database(db)
+        self.db = db
         return dropped
 
     def check_duplicate_song(self, youtube_url):
