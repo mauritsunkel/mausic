@@ -5,15 +5,12 @@ from inspect import getsourcefile
 def top_level_path():
     """
     Get top level path location, in this project app.py folder because it serves as main/entry_point.
-
     NOTE: module_locator.py should be in same folder as entry_point.py(/main.py) script 
     - TEST this with executable 
     - TEST this without executable 
-
     NOTE: care with use of __file__ as it comes with unwarranted side effects when:
     - running from IDLE (Python shell), no __file__ attribute
     - freezers, e.g. py2exe & pyinstaller do not have __file__ attribute! 
-
     NOTE: care with use of sys.argv[0]
     - unexpected result when you want current module path and get path where script/executable was run from! 
     """
