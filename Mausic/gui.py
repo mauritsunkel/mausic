@@ -17,6 +17,11 @@ from pathlib import Path, PurePath
 from random import sample
 from shutil import copy
 
+# s = ttk.Style()
+# print(s.theme_names())
+# print(s.theme_use())
+# s.theme_use('clam')
+
 
 # tell windows that python(w) is a host and not an application before it gets grouped as such
 # therefore TASKBAR ICON will be set by tkinter now
@@ -59,7 +64,7 @@ class UserInterface(tk.Frame):
 
         self.queue = queue.Queue()
         self.initialize_playlists()
-        self.parent.after(1000, self.check_queue)
+        self.after(1000, self.check_queue)
         
         
     def recolor_trees(self):
@@ -67,6 +72,9 @@ class UserInterface(tk.Frame):
         self.playlist_tree.tag_configure('red', foreground='orange')
 
     def initialize_playlists(self, path = None):
+        # empty playlist
+        self.remove_all_songs_from_playlist()
+
         if path == None:
             # get json playlists from playlist folder 
             files = []
@@ -78,7 +86,7 @@ class UserInterface(tk.Frame):
         # load df from json playlist
         playlist_df = self.MDB.load_database(playlist_file)
         # use indices from df as IID for treeview and populate the playlist_treeview
-        for index in playlist_df.index:
+        for index in playlist_df.iids:
             values = self.tree.item(index)['values']
             try:
                 self.playlist_tree.insert(parent = '', index = 'end', iid = index, text = index, values = values, tags = self.tree.item(index)['tags'])
@@ -91,19 +99,22 @@ class UserInterface(tk.Frame):
 
         if path == None:
             # set playlists tree
-            for index, path in enumerate(files):
-                playlist_name = Path(path).stem
-                self.playlist_list_tree.insert(parent = '', index = 'end', iid = path, text = path, values = playlist_name)
+            for index, filepath in enumerate(files):
+                playlist_name = Path(filepath).stem
+                self.playlist_list_tree.insert(parent = '', index = 'end', iid = filepath, text = filepath, values = playlist_name)
 
         # set GUI values on initialize
-        self.on_single_click_either_tree(iid = playlist_df.index[0])
+        self.on_single_click_either_tree(iid = playlist_df.iids[0])
 
         filepath = self.JSON.loc[playlist_df.index[0]]['filepath']
-        self.set_song_end_time(self.JSON.loc[playlist_df.index[0]]['duration']) 
-        def run_player():
-            player.Player(play_volume = self.VOLUME/100, song_index = 0, queue = self.queue, filepath = filepath)
-        music_player_T = Thread(target=run_player, daemon = True)
-        music_player_T.start()
+        self.set_song_end_time(self.JSON.loc[playlist_df.iids[0]]['duration']) 
+        if path == None:
+            def run_player():
+                player.Player(play_volume = self.VOLUME/100, song_index = 0, queue = self.queue, filepath = filepath)
+            music_player_T = Thread(target=run_player, daemon = True)
+            music_player_T.start()
+        else:
+            self.reset_song(iid = playlist_df.iids[0])
      
 
     def initialize_global_layout(self):
@@ -124,15 +135,15 @@ class UserInterface(tk.Frame):
         
     def initialize_player_layout(self):
         # set images
-        self.player_play_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'play.png'), name='test')
-        self.player_pause_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'pause.png'))
-        self.player_mute_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'mute.png'))
-        self.player_sound_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'sound.png'))
-        self.player_sound_low_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'sound low.png'))
-        self.player_sound_lowest_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'sound lowest.png'))
-        self.player_shuffle_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'shuffle.png'))
-        self.player_previous_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'previous.png'))
-        self.player_next_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'next.png'))
+        self.player_play_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'play.png'), name='test', master=self)
+        self.player_pause_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'pause.png'), master=self)
+        self.player_mute_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'mute.png'), master=self)
+        self.player_sound_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'sound.png'), master=self)
+        self.player_sound_low_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'sound low.png'), master=self)
+        self.player_sound_lowest_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'sound lowest.png'), master=self)
+        self.player_shuffle_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'shuffle.png'), master=self)
+        self.player_previous_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'previous.png'), master=self)
+        self.player_next_img = tk.PhotoImage(file=Path(self.RESOURCE_PATH / 'next.png'), master=self)
         
         # resize images
         # self.player_stop_img = self.player_stop_img.subsample(6, 6)
@@ -567,7 +578,7 @@ class UserInterface(tk.Frame):
 
         # add song to db, if successfull give user a message
         self.JSON.at[self.meta_tree_iid, 'filepath'] = self.song_filepath 
-        updated = UserInterface.MDB.metadata_to_database(meta, self.JSON)
+        updated = self.MDB.metadata_to_database(meta, self.JSON)
         # RELOAD JSON to immediately be able to use mixer buttons after download 
         self.JSON = self.MDB.load_database(self.MDB.database_path)
 
@@ -658,6 +669,7 @@ class UserInterface(tk.Frame):
 
 
     def save_songs_from_playlist(self):
+        playlist_name = self.save_songs_to_playlist_e.get()
         if not self.check_playlist_name():
             return
         
@@ -670,11 +682,16 @@ class UserInterface(tk.Frame):
 
         df = pd.DataFrame(iids)
         
-        succes = self.MDB.save_playlist_database(df, self.save_songs_to_playlist_e.get())
+        # check if playlist saved successfully
+        succes = self.MDB.save_playlist_database(df, playlist_name)
         if succes:
             self.playlist_lf.config(text = 'Playlist successfully saved!', fg = 'green') 
         else:
             self.playlist_lf.config(text = 'Playlist with a similar name exists, try another name', fg = 'red') 
+
+        # add playlist to playlists_tree for use right away 
+        playlist_path = self.PLAYLIST_PATH / f'{playlist_name}.json'
+        self.playlist_list_tree.insert(parent = '', index = 'end', iid = playlist_path, text = playlist_path, values = playlist_name)
 
 
     def get_annotations(self, iid = None):
@@ -688,6 +705,9 @@ class UserInterface(tk.Frame):
                 if clip.split('watch?v=')[1] + '.mp3' in str(mp3):
                     if not messagebox.askokcancel(title = "Duplicate song!", message = "Do you want to redownload and update metadata of song?"):
                         return
+            
+            # success message
+            self.playlist_lf.configure(text = 'Playlist: downloading song ...', fg = 'orange')
             # download and extract raw metadata
             raw_meta = self.MD.download_mp3(link = clip)
             # get filepath to sava in DB and load song into mixer 
@@ -1064,7 +1084,7 @@ class UserInterface(tk.Frame):
             self.set_next_song()
 
         # call self to check queue again every second while GUI and player are active 
-        self.parent.after(1000, self.check_queue)
+        self.after(1000, self.check_queue)
 
         while not self.queue.empty():
             try:
@@ -1110,37 +1130,41 @@ if __name__ == '__main__':
 
     root = tk.Tk() 
     root.title("Mausic")
-    root.iconphoto(True, tk.PhotoImage(file = Path(top_level_path() / 'data' / 'resources' / 'icons' / 'Mausic logo.png')))
-    # root.configure(background = 'red')
-    # root.geometry('1250x750')
+    root.iconphoto(True, tk.PhotoImage(file = Path(top_level_path() / 'data' / 'resources' / 'icons' / 'Mausic logo.png'), master=root))
+    # root.configure(background = 'black')
+    # root.geometry('1250x750')ñ
     root.resizable(0, 0)
     # root.minsize(500, 500)
     root.maxsize(root.winfo_screenwidth(), root.winfo_screenheight())
     app = UserInterface(root)
-    # app.configure(background = '#dddddd')
+    # app.configure(background = '#ffffff')
 
     root.mainloop()
 
-# TODO in JSON playlists a kay and an IID are given, but to load in music it's using the wrong numbers! 
-# TODO fix loading playlists based on this info
-# TODO when saving a playlist, show it right away in the playlist_list_tree
 
 
 
+
+
+# TODO customize style and colors: https://tkdocs.com/tutorial/styles.html
+
+
+# TODO if focus is on entry, if press enter, can that be bound to a function? for search functionality
+# TODO create delete button for playlist.json & add entry box to type for search functionality ^
+# TODO add search button, use playlist save entry 
 # TODO add filters for songlist, based on selection in Update metadata box, add 2 buttons there that empty all fields and one for filtering based on selection, move labeltext to labelframe everywhere it gets changed
 ## add functions to make selection a different colour, which means exclude instead of include 
 
 # TODO the + and - buttons are going to have functionality for song rating which gets saved instantly in JSON MDB or temp MDB which updates main JSON MDB at certain intervals
 # TODO create ? button that shows popup screen for all hotkeys 
 
-# TODO customize style and colors 
+
 
 # TODO loop over all downloaded entries and perform BPM calculation once
 # TODO use pydub to slice audio (when songs are silent at begin or end, or want to make a meme small fragment easily)
 
 # TODO need a way to add music from mp3 instead of YT 
 
-# TODO add progressionbar of song download (possible via YDL? )
 
 # TODO artists to add
 # wudstik 

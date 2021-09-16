@@ -2,8 +2,6 @@ from __future__ import unicode_literals
 import youtube_dl
 import update_database as ud
 
-
-# print(help(youtube_dl))
 # DEVNOTE: need to download & install & PATH ffmpeg: https://www.youtube.com/watch?v=r1AtmY-RMyQ
 
 class MusicDownload:
@@ -83,20 +81,3 @@ class MusicDownload:
 		MDB = ud.MusicDatabase()
 		with youtube_dl.YoutubeDL(ydl_mp3_options) as ydl:
 			return ydl.extract_info(link, download = True)
-			# if download:
-			# 	ydl.download([link])
-			# if to_database:
-				# return ydl.extract_info(link, download = True)
-				# if 'entries' in info.keys():
-				# 	MDB.metadata_to_database(meta = info['entries'])
-				# else:
-				# 	MDB.metadata_to_database(meta = info)
-
-
-if __name__ == '__main__':
-	pass
-	# link = 'https://www.youtube.com/watch?v=3nlSDxvt6JU'
-	# MD = Musicdownload(youtube_link = link, download_wav = True, download_mp4 = False)
-	
-	# link = 'https://www.youtube.com/watch?v=3nlSDxvt6JU' # song
-	# link = 'https://www.youtube.com/watch?v=tqRC6A0mlk4&list=PLW8_7fTWU3uZbQk1HviUs4x9mxXmZDFUI' # album
