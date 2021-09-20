@@ -213,15 +213,15 @@ class UserInterface(tk.Frame):
             
         
     def initialize_playlist_list_layout(self):
-        self.playlist_list_frame = tk.Frame(self.playlist_list_f)
+        self.playlist_list_top_frame = tk.Frame(self.playlist_list_f)
+        self.playlist_list_bottom_frame = tk.Frame(self.playlist_list_f)
         
         # tree view scrollbar
-        self.playlist_list_tree_scroll_y = tk.Scrollbar(self.playlist_list_frame)
+        self.playlist_list_tree_scroll_y = tk.Scrollbar(self.playlist_list_bottom_frame)
 
-        self.playlist_list_tree = ttk.Treeview(self.playlist_list_frame, height = 13, yscrollcommand = self.playlist_list_tree_scroll_y.set)
+        self.playlist_list_tree = ttk.Treeview(self.playlist_list_bottom_frame, height = 13, yscrollcommand = self.playlist_list_tree_scroll_y.set)
         self.playlist_list_tree.bind('<Double-Button-1>', self.on_double_click_playlist_list_tree)
-
-        
+        self.playlist_list_tree_detached = []
 
         self.playlist_list_tree['columns'] = ('Playlists')
         self.playlist_list_tree.column('#0', width = 0, stretch = tk.NO)
@@ -236,12 +236,61 @@ class UserInterface(tk.Frame):
         self.playlist_list_tree.heading('#0', text = '', command=lambda : treeview_sort_column(self.playlist_list_tree, "#0", False))
         self.playlist_list_tree.heading('Playlists', text = 'Playlists', command=lambda : treeview_sort_column(self.playlist_list_tree, "Playlists", False))
 
+        self.playlist_list_delete_b = tk.Button(self.playlist_list_top_frame, text = 'Delete', command = self.delete_playlists)
+        self.playlist_list_search_str = tk.StringVar()
+        self.playlist_list_search_str.trace('w', lambda name, index, mode, sv=self.playlist_list_search_str: self.search_playlist_list(sv))
+        self.playlist_list_search_e = tk.Entry(self.playlist_list_top_frame, textvariable = self.playlist_list_search_str)
+
+
+
         # pack and configure to frame 
-        self.playlist_list_frame.pack(side = tk.TOP, fill="both", expand=True)
+        self.playlist_list_top_frame.pack(side = tk.TOP, fill="both", expand=True)
+        self.playlist_list_bottom_frame.pack(side = tk.TOP, fill="both", expand=True)
+
+        self.playlist_list_delete_b.pack(side=tk.LEFT, fill = 'both', expand = True)
+        self.playlist_list_search_e.pack(side=tk.RIGHT, fill = 'both', expand = True)
 
         self.playlist_list_tree_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
         self.playlist_list_tree_scroll_y.config(command=self.playlist_list_tree.yview)
         self.playlist_list_tree.pack(side=tk.BOTTOM, fill = 'both', expand = True)
+
+    def delete_playlists(self):
+        selection = self.playlist_list_tree.selection()
+        for playlist in selection:
+            Path(playlist).unlink()
+            self.playlist_list_tree.delete(playlist)
+
+
+    def search_playlist_list(self, event = None):
+        all_children = list(self.playlist_list_tree.get_children()) + self.playlist_list_tree_detached
+        self.playlist_list_tree_detached.clear()
+        search = self.playlist_list_search_e.get()
+        search = search.strip(' ')
+
+        for playlist in all_children:
+            # if query in name 
+            if search.lower() in playlist.split('\\')[-1][:-5].lower():
+                self.playlist_list_tree.reattach(playlist, '', 'end')
+            else:
+                self.playlist_list_tree_detached.append(playlist)
+                self.playlist_list_tree.detach(playlist)
+
+    
+    def search_playlist(self, event = None):
+        all_children = list(self.playlist_tree.get_children()) + self.playlist_tree_detached
+        self.playlist_tree_detached.clear()
+        search = self.save_songs_to_playlist_e.get()
+        search = search.strip(' ')
+
+
+        # TODO here playlist is an iid instead of a path/file.json, so need to get item text or values and apply search on that first! 
+        for playlist in all_children:
+            # if query in name 
+            if search.lower() in playlist.split('\\')[-1][:-5].lower():
+                self.playlist_tree.reattach(playlist, '', 'end')
+            else:
+                self.playlist_tree_detached.append(playlist)
+                self.playlist_tree.detach(playlist)
 
 
     def initialize_playlist_layout(self):
@@ -253,14 +302,22 @@ class UserInterface(tk.Frame):
         self.remove_all_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Remove all', command = self.remove_all_songs_from_playlist)
         self.remove_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Remove', command = self.remove_songs_from_playlist)
         self.save_songs_to_car_playlist_b = tk.Button(self.playlist_top_frame, text = 'Car save', command = self.save_mp3s_to_car_playlist_folder)
-        self.save_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Save', command = self.save_songs_from_playlist)
-        self.save_songs_to_playlist_e = tk.Entry(self.playlist_top_frame)
+        # self.save_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Save', command = self.save_songs_from_playlist)
+
+        # TODO
+        self.save_songs_to_playlist_e_str = tk.StringVar()
+        self.save_songs_to_playlist_e_str.trace('w', lambda name, index, mode, sv=self.save_songs_to_playlist_e_str: self.search_playlist(sv))
+        self.save_songs_to_playlist_e = tk.Entry(self.playlist_top_frame, textvariable = self.save_songs_to_playlist_e_str)
+        self.save_songs_to_playlist_e.bind('<Return>', self.save_songs_from_playlist)
+
+        
 
         # tree view scrollbar
         self.playlist_tree_scroll_y = tk.Scrollbar(self.playlist_bottom_frame)
 
         # tree with columns, headers, and header sorting
         self.playlist_tree = ttk.Treeview(self.playlist_bottom_frame, height = 13, yscrollcommand = self.playlist_tree_scroll_y.set)
+        self.playlist_tree_detached = []
         self.playlist_tree.bind('<ButtonRelease-1>', self.on_single_click_playlist_tree)
         self.playlist_tree.bind("<Double-Button-1>", self.on_double_click_playlist_tree)
         self.playlist_tree['columns'] = ('Artist', 'Song', '*', 'Genre', 'Emotion', 'Date', 'Language', 'Vocal', 'Instrument', 'Album')
@@ -304,7 +361,7 @@ class UserInterface(tk.Frame):
         self.remove_all_songs_to_playlist_b.pack(side=tk.LEFT, fill = 'both', expand = True)
         self.remove_songs_to_playlist_b.pack(side=tk.LEFT, fill = 'both', expand = True)
         self.save_songs_to_car_playlist_b.pack(side=tk.LEFT, fill = 'both', expand = True)
-        self.save_songs_to_playlist_b.pack(side=tk.LEFT, fill = 'both', expand = True)
+        # self.save_songs_to_playlist_b.pack(side=tk.LEFT, fill = 'both', expand = True)
         self.save_songs_to_playlist_e.pack(side=tk.LEFT, fill = 'both', expand = True)
 
         self.playlist_tree_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
@@ -668,7 +725,7 @@ class UserInterface(tk.Frame):
         self.playlist_lf.config(text = f'Car playlist successfuly created!', fg = 'green') 
 
 
-    def save_songs_from_playlist(self):
+    def save_songs_from_playlist(self, event = None):
         playlist_name = self.save_songs_to_playlist_e.get()
         if not self.check_playlist_name():
             return
@@ -1146,24 +1203,21 @@ if __name__ == '__main__':
 
 
 
-# TODO customize style and colors: https://tkdocs.com/tutorial/styles.html
 
 
-# TODO if focus is on entry, if press enter, can that be bound to a function? for search functionality
-# TODO create delete button for playlist.json & add entry box to type for search functionality ^
-# TODO add search button, use playlist save entry 
+# TODO use playlist entry as search in playlist, while YDL labelframe elements will serve as filtering for the songlist database
 # TODO add filters for songlist, based on selection in Update metadata box, add 2 buttons there that empty all fields and one for filtering based on selection, move labeltext to labelframe everywhere it gets changed
 ## add functions to make selection a different colour, which means exclude instead of include 
 
 # TODO the + and - buttons are going to have functionality for song rating which gets saved instantly in JSON MDB or temp MDB which updates main JSON MDB at certain intervals
 # TODO create ? button that shows popup screen for all hotkeys 
 
-
-
 # TODO loop over all downloaded entries and perform BPM calculation once
 # TODO use pydub to slice audio (when songs are silent at begin or end, or want to make a meme small fragment easily)
 
 # TODO need a way to add music from mp3 instead of YT 
+
+# TODO customize style and colors: https://tkdocs.com/tutorial/styles.html
 
 
 # TODO artists to add
