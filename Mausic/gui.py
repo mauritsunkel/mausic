@@ -282,15 +282,25 @@ class UserInterface(tk.Frame):
         search = self.save_songs_to_playlist_e.get()
         search = search.strip(' ')
 
-
-        # TODO here playlist is an iid instead of a path/file.json, so need to get item text or values and apply search on that first! 
-        for playlist in all_children:
+        for iid in all_children:
+            iid = int(iid)
+            query_string = self.get_query_information(iid = iid)
             # if query in name 
-            if search.lower() in playlist.split('\\')[-1][:-5].lower():
-                self.playlist_tree.reattach(playlist, '', 'end')
+            if search.lower() in query_string.lower():
+                self.playlist_tree.reattach(str(iid), '', 'end')
             else:
-                self.playlist_tree_detached.append(playlist)
-                self.playlist_tree.detach(playlist)
+                self.playlist_tree_detached.append(str(iid))
+                self.playlist_tree.detach(str(iid))
+
+
+    def get_query_information(self, iid):
+        db = self.JSON.loc[iid]
+        string = ''
+        for value in db['artist']:
+            string += f'{value} '
+        string += f"{db['song']} "
+        string += f"{db['album']} "
+        return string
 
 
     def initialize_playlist_layout(self):
@@ -304,7 +314,6 @@ class UserInterface(tk.Frame):
         self.save_songs_to_car_playlist_b = tk.Button(self.playlist_top_frame, text = 'Car save', command = self.save_mp3s_to_car_playlist_folder)
         # self.save_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Save', command = self.save_songs_from_playlist)
 
-        # TODO
         self.save_songs_to_playlist_e_str = tk.StringVar()
         self.save_songs_to_playlist_e_str.trace('w', lambda name, index, mode, sv=self.save_songs_to_playlist_e_str: self.search_playlist(sv))
         self.save_songs_to_playlist_e = tk.Entry(self.playlist_top_frame, textvariable = self.save_songs_to_playlist_e_str)
@@ -458,7 +467,6 @@ class UserInterface(tk.Frame):
             self.genre_lb.insert(i, self.genre_values[i])
         self.genre_lb.pack(side = 'left')
         self.genre_sb.config(command = self.genre_lb.yview)
-        self.add_song_user_l = tk.Label(self.add_song_lf, text = 'Copy YT-link + press l_alt+r_shift in app', fg = 'green')
         
         self.album_l = tk.Label(self.add_song_lf, text = "Album")
         self.album_e = tk.Entry(self.add_song_lf)
@@ -469,6 +477,8 @@ class UserInterface(tk.Frame):
         self.type_cb.current(0)
         self.release_year_l = tk.Label(self.add_song_lf, text = "Release year")
         self.release_year_e = tk.Entry(self.add_song_lf)
+        self.clear_b = tk.Button(self.add_song_lf, text = 'Clear', command = self.clear_filter_entries)
+        self.filter_b = tk.Button(self.add_song_lf, text = 'Filter', command = self.filter_using_entries)
         self.duration_l = tk.Label(self.add_song_lf, text = "Duration (s)")
         self.duration_e = tk.Entry(self.add_song_lf, state = 'disabled')
         self.rating_l = tk.Label(self.add_song_lf, text = f"Rating: {self.RATING_DEFAULT}")
@@ -479,7 +489,10 @@ class UserInterface(tk.Frame):
         self.sophisticated_s = tk.Scale(self.add_song_lf, from_ = 0, to = 100, resolution = 1, command = self.update_sophisticated, orient = 'horizontal')
         self.sophisticated_s.set(self.SOPHISTICATED_DEFAULT)
 
+
         
+
+
         self.emotion_l = tk.Label(self.add_song_lf, text = "Emotion(s)")
 
         
@@ -540,7 +553,6 @@ class UserInterface(tk.Frame):
         self.rating_s.grid(row = 0, column = 3, rowspan = 2, sticky = 'w')
         self.sophisticated_l.grid(row = 2, column = 2, rowspan = 2, sticky = 'e')
         self.sophisticated_s.grid(row = 2, column = 3, rowspan = 2, sticky = 'w')
-        self.add_song_user_l.grid(row = 0, column = 4, columnspan = 3)
         
         self.genre_l.grid(row = 8, column = 0, sticky = 'e')
         self.emotion_l.grid(row = 8, column = 2, sticky = 'e')
@@ -552,6 +564,9 @@ class UserInterface(tk.Frame):
         self.language_cb.grid(row = 3, column = 7, sticky = 'w')
         self.link_l.grid(row = 3, column = 4, sticky = 'e')
         self.link_e.grid(row = 3, column = 5, sticky = 'w')
+        
+        self.clear_b.grid(row = 0, column = 4, sticky = 'e')
+        self.filter_b.grid(row = 0, column = 5, sticky = 'e')
         self.duration_l.grid(row = 1, column = 4, sticky = 'e')
         self.duration_e.grid(row = 1, column = 5, sticky = 'w')
         self.year_added_l.grid(row = 2, column = 4, sticky = 'e')
@@ -571,7 +586,6 @@ class UserInterface(tk.Frame):
 
     
     def go_to_youtube(self, event):
-        
         url = self.link_e.get()
         chrome_path = 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe %s'
         if 'youtube' in url:
@@ -600,7 +614,7 @@ class UserInterface(tk.Frame):
 
     def add_song_to_database(self):
         if self.song_e.get() == "":
-            self.add_song_user_l.config(text = "No metadata entered in fields", fg = 'red')
+            self.add_song_lf.config(text = "Youtube-DL: No metadata entered in fields", fg = 'red')
             # self.songlist_lf.config(text = 'test', fg = 'red')
             return
 
@@ -640,9 +654,9 @@ class UserInterface(tk.Frame):
         self.JSON = self.MDB.load_database(self.MDB.database_path)
 
         if updated:
-            self.add_song_user_l.config(text = "Existing song metadata updated!", fg = 'green')
+            self.add_song_lf.config(text = "Youtube-DL: Existing song metadata updated!", fg = 'green')
         else:
-            self.add_song_user_l.config(text = "Upload successful!", fg = 'green')
+            self.add_song_lf.config(text = "Youtube-DL: Upload successful!", fg = 'green')
             
         self.tree.item(self.meta_tree_iid, tags = ('green',))
         self.playlist_tree.item(self.meta_tree_iid, tags = ('green',))
@@ -682,10 +696,12 @@ class UserInterface(tk.Frame):
             self.playlist_tree.delete(iid)
         self.playlist_lf.config(text = 'Playlist: Removed all songs!', fg = 'green')
 
+
     def remove_songs_from_playlist(self):
         for iid in self.playlist_tree.selection():
             self.playlist_tree.delete(iid)
         self.playlist_lf.config(text = 'Playlist: Removed song!', fg = 'green')
+
 
     def check_playlist_name(self):
         if self.save_songs_to_playlist_e.get() == "":
@@ -789,7 +805,7 @@ class UserInterface(tk.Frame):
 
             self.set_gui_values_after_download(meta = meta)
         else:
-            self.add_song_user_l.config(text = "No Youtube link copied", fg = 'red')
+            self.add_song_lf.config(text = "Youtube-DL: No Youtube link copied", fg = 'red')
 
 
     def set_volume_icon(self, volume):
@@ -854,8 +870,9 @@ class UserInterface(tk.Frame):
         iid = int(self.playlist_tree.selection()[0])
         self.on_single_click_either_tree(iid = iid)
 
+
     def on_single_click_either_tree(self, iid):
-        self.add_song_user_l.config(text = "Adjust metadata if needed", fg = 'black')
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed", fg = 'black')
 
         db = self.JSON.loc[iid]
 
@@ -891,7 +908,6 @@ class UserInterface(tk.Frame):
         self.bpm = db['bpm'] 
         self.meta_tree_iid = iid
 
-
         def set_listboxes(db, values, listbox):
             listbox.selection_clear(0, 'end')
             for type in db:
@@ -903,7 +919,6 @@ class UserInterface(tk.Frame):
         set_listboxes(db['instrument'], self.instrument_values, self.instrument_lb)
         set_listboxes(db['vocal'], self.vocal_values, self.vocal_lb)
 
-
         def set_comboboxes(db, combobox, values): 
             if db == "":
                 combobox.set("")
@@ -913,6 +928,58 @@ class UserInterface(tk.Frame):
                         combobox.set(type)
         set_comboboxes(db['language'], self.language_cb, self.language_values)
         set_comboboxes(db['type'], self.type_cb, self.type_values)
+
+
+    def clear_filter_entries(self):
+        self.link_e.configure(state='normal')
+        self.link_e.delete(0, tk.END)
+        self.link_e.configure(state='disabled')
+        self.song_e.delete(0, tk.END)
+        self.artist_e.delete(0, tk.END)
+        self.album_e.delete(0, tk.END)
+        self.release_year_e.delete(0, tk.END)
+        self.year_added_e.delete(0, tk.END)
+        self.duration_e.configure(state='normal')
+        self.duration_e.delete(0, tk.END)
+        self.duration_e.configure(state='disabled')
+        self.year_added_e.configure(state='normal')
+        self.year_added_e.delete(0, tk.END)
+        self.year_added_e.configure(state='disabled')
+
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata for filtering!", fg = 'black')
+
+
+    def filter_using_entries(self):
+        # self.JSON
+        artist = ["Frenna","Lil Kleine"]
+        song = "Verleden Tijd"
+
+
+        # pd.Series([1, [2]]).apply(lambda x: x in [1])
+
+        # print(self.JSON['artist'].apply(lambda x: x in artist))
+        # print(type(self.JSON['artist'].apply(lambda x: x in artist)))
+        # self.JSON['artist'].apply(lambda x: print(x))
+        s = self.JSON['artist'].apply(lambda x: [y in artist for y in x])
+        print(s)
+        # print(s[s].index)
+
+        
+
+        # print(self.JSON[self.JSON['artist']].isin(artist))
+
+        # print(self.JSON['artist'])
+        # df = self.JSON.query(f"{self.JSON[self.JSON['artist']]}.isin(@artist)", engine = 'python') #  song == @song & 
+        # print(df)
+
+        # TODO use each entries to look up matching rows in JSON 
+        # TODO try one by one 
+        # TODO rating and sophisticated will be >= 
+        pass
+        # df.query('Gender=="Male" & Year=="2014" ')
+        
+        # artist: "32":["Frenna","Lil Kleine"]
+
 
 
     def set_gui_values_after_download(self, meta):
@@ -948,7 +1015,7 @@ class UserInterface(tk.Frame):
         self.song_filepath = meta['filepath']
         self.meta_tree_iid = meta['tree_iid']
         
-        self.add_song_user_l.config(text = "Adjust metadata if needed", fg = 'black')
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed", fg = 'black')
 
 
     def on_double_click_playlist_tree(self, event):
@@ -1205,7 +1272,7 @@ if __name__ == '__main__':
 
 
 
-# TODO use playlist entry as search in playlist, while YDL labelframe elements will serve as filtering for the songlist database
+# TODO YDL labelframe elements will serve as filtering for the songlist database
 # TODO add filters for songlist, based on selection in Update metadata box, add 2 buttons there that empty all fields and one for filtering based on selection, move labeltext to labelframe everywhere it gets changed
 ## add functions to make selection a different colour, which means exclude instead of include 
 
