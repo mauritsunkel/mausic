@@ -216,7 +216,7 @@ class MusicDatabase:
             'filepath': meta['filepath'],
             'duration': meta['duration'], 
             'album': meta['album'], 
-            'year_added': int(f'{datetime.today().year}{datetime.today().month}{datetime.today().day}'), 
+            'year_added': int(f'{datetime.today().year}0{datetime.today().month}{datetime.today().day}') if len(str(datetime.today().month)) == 1 else int(f'{datetime.today().year}{datetime.today().month}{datetime.today().day}'), 
             'release_year': int(meta['upload_date'][0:4]),
             'youtube_url': meta['webpage_url'],
             'tree_iid': meta['tree_iid'],

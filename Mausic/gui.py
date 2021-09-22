@@ -277,7 +277,7 @@ class UserInterface(tk.Frame):
 
     
     def search_playlist(self, event = None):
-        all_children = list(self.playlist_tree.get_children()) + self.playlist_tree_detached
+        all_children = list(self.playlist_tree.get_children()) + list(self.playlist_tree_detached)
         self.playlist_tree_detached.clear()
         search = self.save_songs_to_playlist_e.get()
         search = search.strip(' ')
@@ -289,7 +289,7 @@ class UserInterface(tk.Frame):
             if search.lower() in query_string.lower():
                 self.playlist_tree.reattach(str(iid), '', 'end')
             else:
-                self.playlist_tree_detached.append(str(iid))
+                self.playlist_tree_detached.add(str(iid))
                 self.playlist_tree.detach(str(iid))
 
 
@@ -326,7 +326,7 @@ class UserInterface(tk.Frame):
 
         # tree with columns, headers, and header sorting
         self.playlist_tree = ttk.Treeview(self.playlist_bottom_frame, height = 13, yscrollcommand = self.playlist_tree_scroll_y.set)
-        self.playlist_tree_detached = []
+        self.playlist_tree_detached = set()
         self.playlist_tree.bind('<ButtonRelease-1>', self.on_single_click_playlist_tree)
         self.playlist_tree.bind("<Double-Button-1>", self.on_double_click_playlist_tree)
         self.playlist_tree['columns'] = ('Artist', 'Song', '*', 'Genre', 'Emotion', 'Date', 'Language', 'Vocal', 'Instrument', 'Album')
@@ -384,6 +384,7 @@ class UserInterface(tk.Frame):
 
         # tree with columns, headers, and header sorting
         self.tree = ttk.Treeview(self.songlist_lf, height = 13, yscrollcommand = self.tree_scroll_y.set)
+        self.tree_detached = set()
         self.tree.bind('<ButtonRelease-1>', self.on_single_click_songlist_tree)
         self.tree.bind("<Double-Button-1>", self.on_double_click_songlist_tree)
         self.tree['columns'] = ('Artist', 'Song', '*', 'Genre', 'Emotion', 'Date', 'Language', 'Vocal', 'Instrument', 'Album')
@@ -467,6 +468,8 @@ class UserInterface(tk.Frame):
             self.genre_lb.insert(i, self.genre_values[i])
         self.genre_lb.pack(side = 'left')
         self.genre_sb.config(command = self.genre_lb.yview)
+        self.genre_lb.bind("<Button-1>", self.set_antifilter_color)
+        self.genre_lb.bind("<Button-3>", self.set_antifilter_color)
         
         self.album_l = tk.Label(self.add_song_lf, text = "Album")
         self.album_e = tk.Entry(self.add_song_lf)
@@ -489,13 +492,7 @@ class UserInterface(tk.Frame):
         self.sophisticated_s = tk.Scale(self.add_song_lf, from_ = 0, to = 100, resolution = 1, command = self.update_sophisticated, orient = 'horizontal')
         self.sophisticated_s.set(self.SOPHISTICATED_DEFAULT)
 
-
-        
-
-
         self.emotion_l = tk.Label(self.add_song_lf, text = "Emotion(s)")
-
-        
         self.emotion_f = tk.Frame(self.add_song_lf)
         self.emotion_f.grid(row = 8, column = 3, sticky = 'w')
         self.emotion_sb = tk.Scrollbar(self.emotion_f)
@@ -506,6 +503,8 @@ class UserInterface(tk.Frame):
             self.emotion_lb.insert(i, self.emotion_values[i])
         self.emotion_lb.pack(side = 'left')
         self.emotion_sb.config(command = self.emotion_lb.yview)
+        self.emotion_lb.bind("<Button-1>", self.set_antifilter_color)
+        self.emotion_lb.bind("<Button-3>", self.set_antifilter_color)
 
         self.instrument_l = tk.Label(self.add_song_lf, text = "Instrument(s)")
         self.instrument_f = tk.Frame(self.add_song_lf)
@@ -518,6 +517,8 @@ class UserInterface(tk.Frame):
             self.instrument_lb.insert(i, self.instrument_values[i])
         self.instrument_lb.pack(side = 'left')
         self.instrument_sb.config(command = self.instrument_lb.yview)
+        self.instrument_lb.bind("<Button-1>", self.set_antifilter_color)
+        self.instrument_lb.bind("<Button-3>", self.set_antifilter_color)
 
         self.vocal_l = tk.Label(self.add_song_lf, text = "Vocal(s)")
         self.vocal_f = tk.Frame(self.add_song_lf)
@@ -531,6 +532,8 @@ class UserInterface(tk.Frame):
         self.vocal_lb.pack(side = 'left')
         self.vocal_sb.config(command = self.vocal_lb.yview)
         self.vocal_lb.bind("<<ListboxSelect>>", self.set_vocal_default)
+        self.vocal_lb.bind("<Button-1>", self.set_antifilter_color)
+        self.vocal_lb.bind("<Button-3>", self.set_antifilter_color)
 
         self.language_l = tk.Label(self.add_song_lf, text = "Language")
         self.language_values = ["", "English", "Dutch", "French", "German", "Asian"]
@@ -566,7 +569,7 @@ class UserInterface(tk.Frame):
         self.link_e.grid(row = 3, column = 5, sticky = 'w')
         
         self.clear_b.grid(row = 0, column = 4, sticky = 'e')
-        self.filter_b.grid(row = 0, column = 5, sticky = 'e')
+        self.filter_b.grid(row = 0, column = 5, sticky = 'w')
         self.duration_l.grid(row = 1, column = 4, sticky = 'e')
         self.duration_e.grid(row = 1, column = 5, sticky = 'w')
         self.year_added_l.grid(row = 2, column = 4, sticky = 'e')
@@ -593,10 +596,25 @@ class UserInterface(tk.Frame):
             self.pause_song()
 
 
-    def set_vocal_default(self, *args):
+    def set_antifilter_color(self, event):
+        iid = self.vocal_lb.nearest(y = event.y)
+        # left click
+        if event.num == 1:
+            event.widget.itemconfig(iid, selectbackground = "")
+        # right click 
+        if event.num == 3:
+            if event.widget.itemcget(index = iid, option = 'selectbackground') == '':
+                event.widget.itemconfig(iid, selectbackground = "red")
+                event.widget.selection_set(iid)
+            elif event.widget.itemcget(index = iid, option = 'selectbackground') == 'red':
+                event.widget.itemconfig(iid, selectbackground = "")
+                event.widget.selection_clear(iid)
+        
+        
+    def set_vocal_default(self, event, *args):
         if self.language_cb.get() == '':
             self.language_cb.current(1)
-        
+
 
     def update_rating(self, *args):
         self.rating_l.config(text = f"Rating: {str(self.rating_s.get())}")
@@ -910,9 +928,9 @@ class UserInterface(tk.Frame):
 
         def set_listboxes(db, values, listbox):
             listbox.selection_clear(0, 'end')
-            for type in db:
+            for typ in db:
                 for index, value in enumerate(values):
-                    if type == value:
+                    if typ == value:
                         listbox.selection_set(index)
         set_listboxes(db['genre'], self.genre_values, self.genre_lb)
         set_listboxes(db['emotion'], self.emotion_values, self.emotion_lb)
@@ -923,14 +941,19 @@ class UserInterface(tk.Frame):
             if db == "":
                 combobox.set("")
             else:
-                for index, type in enumerate(values):
-                    if type == db:
-                        combobox.set(type)
+                for index, typ in enumerate(values):
+                    if typ == db:
+                        combobox.set(typ)
         set_comboboxes(db['language'], self.language_cb, self.language_values)
         set_comboboxes(db['type'], self.type_cb, self.type_values)
 
 
     def clear_filter_entries(self):
+        # reattach all iids in songlist and clear detached list
+        for iid in set(self.JSON.index):
+            self.tree.reattach(iid, '', 'end')
+        self.tree_detached.clear()
+        
         self.link_e.configure(state='normal')
         self.link_e.delete(0, tk.END)
         self.link_e.configure(state='disabled')
@@ -941,45 +964,178 @@ class UserInterface(tk.Frame):
         self.year_added_e.delete(0, tk.END)
         self.duration_e.configure(state='normal')
         self.duration_e.delete(0, tk.END)
-        self.duration_e.configure(state='disabled')
         self.year_added_e.configure(state='normal')
         self.year_added_e.delete(0, tk.END)
-        self.year_added_e.configure(state='disabled')
+        self.genre_lb.select_clear(0, tk.END)
+        self.emotion_lb.select_clear(0, tk.END)
+        self.instrument_lb.select_clear(0, tk.END)
+        self.vocal_lb.select_clear(0, tk.END)
+        self.language_cb.current(0) 
+        self.type_cb.current(0)
+
+        self.rating_s.set(self.RATING_DEFAULT)
+        self.sophisticated_s.set(self.SOPHISTICATED_DEFAULT)
 
         self.add_song_lf.config(text = "Youtube-DL: Adjust metadata for filtering!", fg = 'black')
 
 
     def filter_using_entries(self):
-        # self.JSON
-        artist = ["Frenna","Lil Kleine"]
-        song = "Verleden Tijd"
+        self.tree_detached = set(self.JSON.index)
+        for iid in set(self.JSON.index):
+            self.tree.detach(iid)
 
+        # initialize
+        df = self.JSON
+        # vocal
+        vocal = list(self.vocal_lb.curselection()) # tuple -> list
+        if vocal != []:
+            reattach_index = set(df.index)
+            for voca in vocal:
+                for index, values in df['vocal'].items(): # list
+                    value = self.vocal_values[int(voca)]
+                    if value not in values and self.vocal_lb.itemcget(index = voca, option = 'selectbackground') != 'red':
+                        reattach_index.remove(index)
+            for voca in vocal:
+                for index, values in df['vocal'].items(): # list
+                    value = self.vocal_values[int(voca)]            
+                    if value in values and self.vocal_lb.itemcget(index = voca, option = 'selectbackground') == 'red':
+                        if index in reattach_index:
+                            reattach_index.remove(index)
+            df = df.loc[reattach_index]
+        # language
+        language = self.language_cb.get() # string
+        if language != '':
+            reattach_index = set()
+            for index, value in df['language'].items(): # list
+                if language in value:
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # instrument
+        instrument = list(self.instrument_lb.curselection()) # tuple -> list
+        if instrument != []:
+            reattach_index = set(df.index)
+            for ins in instrument:
+                for index, values in df['instrument'].items(): # list
+                    value = self.instrument_values[int(ins)]
+                    if value not in values and self.instrument_lb.itemcget(index = ins, option = 'selectbackground') != 'red':
+                        reattach_index.remove(index)
+            for ins in instrument:
+                for index, values in df['instrument'].items(): # list
+                    value = self.instrument_values[int(ins)]
+                    if value in values and self.instrument_lb.itemcget(index = ins, option = 'selectbackground') == 'red':
+                        if index in reattach_index:
+                            reattach_index.remove(index)
+            df = df.loc[reattach_index]
+        # album
+        album = self.album_e.get().lower() # string
+        if album != '':
+            reattach_index = set()
+            for index, value in df['album'].items(): # string
+                if album in value.lower():
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # type 
+        typ = self.type_cb.get() # string
+        if typ != '':
+            reattach_index = set()
+            for index, value in df['type'].items(): # string
+                if typ == value:
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # emotion
+        emotion = list(self.emotion_lb.curselection()) # tuple -> list
+        if emotion != []:
+            reattach_index = set(df.index)
+            # if want emo but not there, remove 
+            for emo in emotion:
+                for index, values in df['emotion'].items(): # list
+                    value = self.emotion_values[int(emo)]
+                    if value not in values and self.emotion_lb.itemcget(index = emo, option = 'selectbackground') != 'red':
+                        reattach_index.remove(index)
+            # if dont want emo, but there, remove
+            for emo in emotion:
+                for index, values in df['emotion'].items(): # list
+                    value = self.emotion_values[int(emo)]
+                    if value in values and self.emotion_lb.itemcget(index = emo, option = 'selectbackground') == 'red':
+                        if index in reattach_index:
+                            reattach_index.remove(index)
+            df = df.loc[reattach_index]
+        # genre
+        genre = list(self.genre_lb.curselection()) # tuple -> list
+        if genre != []:
+            reattach_index = set(df.index)
+            for gen in genre:
+                for index, values in df['genre'].items(): # list
+                    value = self.genre_values[int(gen)]
+                    if value not in values and self.genre_lb.itemcget(index = gen, option = 'selectbackground') != 'red':
+                        reattach_index.remove(index)
+            for gen in genre:
+                for index, values in df['genre'].items(): # list
+                    value = self.genre_values[int(gen)]
+                    if value in values and self.genre_lb.itemcget(index = gen, option = 'selectbackground') == 'red':
+                        if index in reattach_index:
+                            reattach_index.remove(index)
+            df = df.loc[reattach_index]
+        # release year 
+        release_year = self.release_year_e.get() # string -> int
+        if release_year != '':
+            release_year = int(release_year)
+            reattach_index = set()
+            for index, value in df['release_year'].items(): # int
+                if release_year == value:
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # duration - >=
+        duration = self.duration_e.get() # string -> int
+        if duration != '':
+            duration = int(duration)
+            reattach_index = set()
+            for index, value in df['duration'].items(): # int
+                if duration >= int(value):
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # year added - TODO could add operator to specify desired behaviour, or format: time-time to sepcify range 
+        year_added = self.year_added_e.get() # string -> int
+        if year_added != '':
+            reattach_index = set()
+            for index, value in df['year_added'].items(): # int
+                if year_added in str(value)[0:len(year_added)]:
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # song
+        song = self.song_e.get().lower() # string
+        if song != '':
+            reattach_index = set()
+            for index, value in df['song'].items(): # string
+                if song in value.lower():
+                    reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # artist
+        artist = self.artist_e.get().lower() # string
+        if artist != '':
+            reattach_index = set()
+            for index, values in df['artist'].items(): # list
+                for artists in values:
+                    if artist in artists.lower():
+                        reattach_index.add(index)
+            df = df.loc[reattach_index]
+        # sophisticated - >=
+        sophisticated = self.sophisticated_s.get() # int 
+        reattach_index = set()
+        for index, value in df['sophisticated'].items(): # int
+            if sophisticated <= value:
+                reattach_index.add(index)
+        df = df.loc[reattach_index]
+        # rating - >=
+        rating = self.rating_s.get() # int 
+        reattach_index = set()
+        for index, value in df['rating'].items(): # int
+            if rating <= value:
+                reattach_index.add(index)
+        df = df.loc[reattach_index]
 
-        # pd.Series([1, [2]]).apply(lambda x: x in [1])
-
-        # print(self.JSON['artist'].apply(lambda x: x in artist))
-        # print(type(self.JSON['artist'].apply(lambda x: x in artist)))
-        # self.JSON['artist'].apply(lambda x: print(x))
-        s = self.JSON['artist'].apply(lambda x: [y in artist for y in x])
-        print(s)
-        # print(s[s].index)
-
-        
-
-        # print(self.JSON[self.JSON['artist']].isin(artist))
-
-        # print(self.JSON['artist'])
-        # df = self.JSON.query(f"{self.JSON[self.JSON['artist']]}.isin(@artist)", engine = 'python') #  song == @song & 
-        # print(df)
-
-        # TODO use each entries to look up matching rows in JSON 
-        # TODO try one by one 
-        # TODO rating and sophisticated will be >= 
-        pass
-        # df.query('Gender=="Male" & Year=="2014" ')
-        
-        # artist: "32":["Frenna","Lil Kleine"]
-
+        for iid in set(df.index):
+            self.tree.reattach(iid, '', 'end')
 
 
     def set_gui_values_after_download(self, meta):
@@ -1270,11 +1426,6 @@ if __name__ == '__main__':
 
 
 
-
-
-# TODO YDL labelframe elements will serve as filtering for the songlist database
-# TODO add filters for songlist, based on selection in Update metadata box, add 2 buttons there that empty all fields and one for filtering based on selection, move labeltext to labelframe everywhere it gets changed
-## add functions to make selection a different colour, which means exclude instead of include 
 
 # TODO the + and - buttons are going to have functionality for song rating which gets saved instantly in JSON MDB or temp MDB which updates main JSON MDB at certain intervals
 # TODO create ? button that shows popup screen for all hotkeys 
