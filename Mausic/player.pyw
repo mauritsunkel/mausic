@@ -108,8 +108,13 @@ class Player():
 
     def increase_volume(self):
         mixer.music.set_volume(mixer.music.get_volume()+0.05)
+        volume = mixer.music.get_volume()
         print("volume:", mixer.music.get_volume())
-        self.queue.put("volume:", mixer.music.get_volume())
+        self.queue.put("volume:", volume)
+
+    @staticmethod
+    def get_volume():
+        return mixer.music.get_volume()
 
 
     def pause_unpause(self):

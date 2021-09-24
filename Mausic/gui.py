@@ -48,6 +48,10 @@ class UserInterface(tk.Frame):
     TIME = 0
     TIME_MEMORY = 0
 
+    LABEL_COLOR = 'lightgreen'
+    BACKGROUND_COLOR = 'black'
+    ACCENT_COLOR = 'lightgreen'
+    ACCENT_COLOR_SECONDARY = 'orange'
 
     def __init__(self, parent = None):
         tk.Frame.__init__(self, parent)
@@ -55,6 +59,7 @@ class UserInterface(tk.Frame):
         self.parent = parent
         self.pack(fill = 'both', expand = True)
 
+        self.style_ttk_layout()
         self.initialize_global_layout()
         self.initialize_add_song_layout()
         self.initialize_songlist_layout()
@@ -66,10 +71,41 @@ class UserInterface(tk.Frame):
         self.initialize_playlists()
         self.after(1000, self.check_queue)
         
+
+    def style_ttk_layout(self):
+        self.style = ttk.Style()
+        self.style.theme_create('style', parent='alt',
+                        settings = {'TCombobox': {'configure': 
+                                        {'selectbackground': self.BACKGROUND_COLOR,
+                                        'fieldbackground': self.BACKGROUND_COLOR,
+                                        'background': self.ACCENT_COLOR}},
+                                    'TScrollbar': {'configure': 
+                                        {'troughcolor': self.BACKGROUND_COLOR,
+                                        'background': self.ACCENT_COLOR}},
+                                    'Treeview': {'configure': 
+                                        {'selectbackground': self.ACCENT_COLOR,
+                                        'fieldbackground': self.BACKGROUND_COLOR,
+                                        'background': self.BACKGROUND_COLOR}},
+                                    'Treeview.Heading': {'configure': 
+                                        {'foreground': self.LABEL_COLOR,
+                                        'background': self.BACKGROUND_COLOR}},
+                                    'TScale': {'configure':
+                                        {'troughcolor': self.BACKGROUND_COLOR,
+                                        'background': self.ACCENT_COLOR}},
+                                    'TLabelframe': {'configure': 
+                                        {'background': self.BACKGROUND_COLOR,
+                                        'relief': 'solid', # DEVNOTE: has to be 'solid' to color 
+                                        'bordercolor': self.ACCENT_COLOR_SECONDARY,
+                                        'borderwidth': 1}},
+                                    'TLabelframe.Label': {'configure': 
+                                        {'foreground': self.LABEL_COLOR,
+                                        'background': self.BACKGROUND_COLOR}}})
+        self.style.theme_use('style')
+
         
     def recolor_trees(self):
-        self.playlist_tree.tag_configure('green', foreground='green')
-        self.playlist_tree.tag_configure('red', foreground='orange')
+        self.playlist_tree.tag_configure(self.LABEL_COLOR, foreground=self.LABEL_COLOR) 
+        self.playlist_tree.tag_configure(self.ACCENT_COLOR_SECONDARY, foreground=self.ACCENT_COLOR_SECONDARY)
 
     def initialize_playlists(self, path = None):
         # empty playlist
@@ -100,8 +136,10 @@ class UserInterface(tk.Frame):
         if path == None:
             # set playlists tree
             for index, filepath in enumerate(files):
+                color = self.LABEL_COLOR
                 playlist_name = Path(filepath).stem
-                self.playlist_list_tree.insert(parent = '', index = 'end', iid = filepath, text = filepath, values = playlist_name)
+                self.playlist_list_tree.insert(parent = '', index = 'end', iid = filepath, text = filepath, tags = (color,), values = playlist_name)
+            self.playlist_list_tree.tag_configure(self.LABEL_COLOR, foreground=self.LABEL_COLOR) 
 
         # set GUI values on initialize
         self.on_single_click_either_tree(iid = playlist_df.iids[0])
@@ -118,19 +156,20 @@ class UserInterface(tk.Frame):
      
 
     def initialize_global_layout(self):
-        self.add_song_lf = tk.LabelFrame(self, text = "Youtube DL")
-        self.songlist_lf = tk.LabelFrame(self, text = "Songlist")
-        self.playlist_lf = tk.LabelFrame(self, text = "Playlist")
-        self.player_playlist_lf = tk.LabelFrame(self, text = "Player & Playlists")
-        self.player_f = tk.Frame(self.player_playlist_lf)
-        self.playlist_list_f = tk.Frame(self.player_playlist_lf)
+        self.add_song_lf_l = ttk.Label(text = "Youtube-DL: Adjust metadata for filtering!") # TODO see next todo and fix that everywhere needed 
+        self.add_song_lf = ttk.LabelFrame(self, labelwidget = self.add_song_lf_l)
+        self.songlist_lf = ttk.LabelFrame(self, text = "Songlist")
+        self.playlist_lf = tk.LabelFrame(self, text = "Playlist", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.player_playlist_lf = ttk.LabelFrame(self, text = "Player & Playlists")
+        self.player_f = tk.Frame(self.player_playlist_lf, bg = self.BACKGROUND_COLOR)
+        self.playlist_list_f = tk.Frame(self.player_playlist_lf, bg = self.BACKGROUND_COLOR)
         
-        self.add_song_lf.grid(row = 0, column = 0, rowspan = 3, columnspan = 1)
-        self.songlist_lf.grid(row = 0, column = 2, rowspan = 3, columnspan = 1)
-        self.playlist_lf.grid(row = 3, column = 2, rowspan = 3, columnspan = 1)
-        self.player_playlist_lf.grid(row = 3, column = 0, rowspan = 3, columnspan = 1)
+        self.add_song_lf.grid(row = 0, column = 0, rowspan = 3, columnspan = 1, sticky=tk.NSEW)
+        self.songlist_lf.grid(row = 0, column = 2, rowspan = 3, columnspan = 1, sticky=tk.NSEW)
+        self.playlist_lf.grid(row = 3, column = 2, rowspan = 3, columnspan = 1, sticky=tk.NSEW)
+        self.player_playlist_lf.grid(row = 3, column = 0, rowspan = 3, columnspan = 1, sticky=tk.NSEW)
         self.player_f.grid(row = 0, column = 0, rowspan = 3, columnspan = 1)
-        self.playlist_list_f.grid(row = 0, column = 2, rowspan = 3, columnspan = 1)
+        self.playlist_list_f.grid(row = 0, column = 2, rowspan = 3, columnspan = 1, sticky=tk.E)
 
         
     def initialize_player_layout(self):
@@ -158,12 +197,12 @@ class UserInterface(tk.Frame):
         self.player_next_img = self.player_next_img.subsample(6, 6)
 
             
-        self.player_song_bar_function = tk.Frame(self.player_f)
-        self.player_song_function_f = tk.Frame(self.player_f)
-        self.player_volume_f = tk.Frame(self.player_f)
+        self.player_song_bar_function = tk.Frame(self.player_f, bg = self.BACKGROUND_COLOR)
+        self.player_song_function_f = tk.Frame(self.player_f, bg = self.BACKGROUND_COLOR)
+        self.player_volume_f = tk.Frame(self.player_f, bg = self.BACKGROUND_COLOR)
 
-        self.player_progress_start_l = tk.Label(self.player_song_bar_function, text = '00:00')
-        self.player_progress_end_l = tk.Label(self.player_song_bar_function, text = '99:99')
+        self.player_progress_start_l = tk.Label(self.player_song_bar_function, text = '00:00', bg = self.BACKGROUND_COLOR, fg = self.LABEL_COLOR)
+        self.player_progress_end_l = tk.Label(self.player_song_bar_function, text = '99:99', bg = self.BACKGROUND_COLOR, fg = self.LABEL_COLOR)
 
         class Scale(ttk.Scale):
             """a type of Scale where the left click is hijacked to work like a right click"""
@@ -180,12 +219,12 @@ class UserInterface(tk.Frame):
 
         # set images on buttons
         # self.player_stop_btn = tk.Button(self.player_song_function_f, image = self.player_stop_img, borderwidth = 0, width=115)
-        self.player_playpause_btn = tk.Button(self.player_song_function_f, text='play', image = self.player_pause_img, borderwidth = 0, width=115, command=self.playpause_song)
-        self.player_sound_btn = tk.Button(self.player_volume_f, borderwidth = 0, width=115, command = self.mute_unmute)
+        self.player_playpause_btn = tk.Button(self.player_song_function_f, text='play', image = self.player_pause_img, borderwidth = 0, width=115, command=self.playpause_song, bg = self.BACKGROUND_COLOR)
+        self.player_sound_btn = tk.Button(self.player_volume_f, borderwidth = 0, width=115, command = self.mute_unmute, bg = self.BACKGROUND_COLOR)
         self.set_volume_icon(self.VOLUME)
-        self.player_shuffle_btn = tk.Button(self.player_volume_f, image = self.player_shuffle_img, borderwidth = 0, width=115, command = self.shuffle_playlist)
-        self.player_previous_btn = tk.Button(self.player_song_function_f, image = self.player_previous_img, borderwidth = 0, width=115, command = self.set_previous_song)
-        self.player_next_btn = tk.Button(self.player_song_function_f, image = self.player_next_img, borderwidth = 0, width=115, command = self.set_next_song)
+        self.player_shuffle_btn = tk.Button(self.player_volume_f, image = self.player_shuffle_img, borderwidth = 0, width=115, command = self.shuffle_playlist, bg = self.BACKGROUND_COLOR)
+        self.player_previous_btn = tk.Button(self.player_song_function_f, image = self.player_previous_img, borderwidth = 0, width=115, command = self.set_previous_song, bg = self.BACKGROUND_COLOR)
+        self.player_next_btn = tk.Button(self.player_song_function_f, image = self.player_next_img, borderwidth = 0, width=115, command = self.set_next_song, bg = self.BACKGROUND_COLOR)
 
 
         # pack image buttons
@@ -217,7 +256,7 @@ class UserInterface(tk.Frame):
         self.playlist_list_bottom_frame = tk.Frame(self.playlist_list_f)
         
         # tree view scrollbar
-        self.playlist_list_tree_scroll_y = tk.Scrollbar(self.playlist_list_bottom_frame)
+        self.playlist_list_tree_scroll_y = ttk.Scrollbar(self.playlist_list_bottom_frame)
 
         self.playlist_list_tree = ttk.Treeview(self.playlist_list_bottom_frame, height = 13, yscrollcommand = self.playlist_list_tree_scroll_y.set)
         self.playlist_list_tree.bind('<Double-Button-1>', self.on_double_click_playlist_list_tree)
@@ -235,11 +274,12 @@ class UserInterface(tk.Frame):
             tv.heading(col, command=lambda: treeview_sort_column(tv, col, not reverse))
         self.playlist_list_tree.heading('#0', text = '', command=lambda : treeview_sort_column(self.playlist_list_tree, "#0", False))
         self.playlist_list_tree.heading('Playlists', text = 'Playlists', command=lambda : treeview_sort_column(self.playlist_list_tree, "Playlists", False))
+        self.tree.heading('Album', text = 'Album', command=lambda : treeview_sort_column(self.tree, "Album", False))
 
-        self.playlist_list_delete_b = tk.Button(self.playlist_list_top_frame, text = 'Delete', command = self.delete_playlists)
+        self.playlist_list_delete_b = tk.Button(self.playlist_list_top_frame, text = 'Delete', command = self.delete_playlists, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.playlist_list_search_str = tk.StringVar()
         self.playlist_list_search_str.trace('w', lambda name, index, mode, sv=self.playlist_list_search_str: self.search_playlist_list(sv))
-        self.playlist_list_search_e = tk.Entry(self.playlist_list_top_frame, textvariable = self.playlist_list_search_str)
+        self.playlist_list_search_e = tk.Entry(self.playlist_list_top_frame, textvariable = self.playlist_list_search_str, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR)
 
 
 
@@ -307,22 +347,22 @@ class UserInterface(tk.Frame):
         self.playlist_top_frame = tk.Frame(self.playlist_lf)
         self.playlist_bottom_frame = tk.Frame(self.playlist_lf)
         
-        self.add_all_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Add all', command = self.add_all_songs_to_playlist)
-        self.add_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Add', command = self.add_songs_to_playlist)
-        self.remove_all_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Remove all', command = self.remove_all_songs_from_playlist)
-        self.remove_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Remove', command = self.remove_songs_from_playlist)
-        self.save_songs_to_car_playlist_b = tk.Button(self.playlist_top_frame, text = 'Car save', command = self.save_mp3s_to_car_playlist_folder)
-        # self.save_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Save', command = self.save_songs_from_playlist)
+        self.add_all_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Add all', command = self.add_all_songs_to_playlist, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.add_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Add', command = self.add_songs_to_playlist, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.remove_all_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Remove all', command = self.remove_all_songs_from_playlist, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.remove_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Remove', command = self.remove_songs_from_playlist, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.save_songs_to_car_playlist_b = tk.Button(self.playlist_top_frame, text = 'Car save', command = self.save_mp3s_to_car_playlist_folder, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        # self.save_songs_to_playlist_b = tk.Button(self.playlist_top_frame, text = 'Save', command = self.save_songs_from_playlist, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
 
         self.save_songs_to_playlist_e_str = tk.StringVar()
         self.save_songs_to_playlist_e_str.trace('w', lambda name, index, mode, sv=self.save_songs_to_playlist_e_str: self.search_playlist(sv))
-        self.save_songs_to_playlist_e = tk.Entry(self.playlist_top_frame, textvariable = self.save_songs_to_playlist_e_str)
+        self.save_songs_to_playlist_e = tk.Entry(self.playlist_top_frame, textvariable = self.save_songs_to_playlist_e_str, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR)
         self.save_songs_to_playlist_e.bind('<Return>', self.save_songs_from_playlist)
 
         
 
         # tree view scrollbar
-        self.playlist_tree_scroll_y = tk.Scrollbar(self.playlist_bottom_frame)
+        self.playlist_tree_scroll_y = ttk.Scrollbar(self.playlist_bottom_frame)
 
         # tree with columns, headers, and header sorting
         self.playlist_tree = ttk.Treeview(self.playlist_bottom_frame, height = 13, yscrollcommand = self.playlist_tree_scroll_y.set)
@@ -380,7 +420,7 @@ class UserInterface(tk.Frame):
 
     def initialize_songlist_layout(self):
         # tree view scrollbar
-        self.tree_scroll_y = tk.Scrollbar(self.songlist_lf)
+        self.tree_scroll_y = ttk.Scrollbar(self.songlist_lf)
 
         # tree with columns, headers, and header sorting
         self.tree = ttk.Treeview(self.songlist_lf, height = 13, yscrollcommand = self.tree_scroll_y.set)
@@ -425,12 +465,12 @@ class UserInterface(tk.Frame):
             vocal = row['vocal'][0] if row['vocal'] != [] else ""
             instrument = row['instrument'][0] if row['instrument'] != [] else ""
 
-            color = 'red' if row['downloaded'] == 0 else 'green'
+            color = self.ACCENT_COLOR_SECONDARY if row['downloaded'] == 0 else self.LABEL_COLOR 
 
             self.tree.insert(parent = '', index = 'end', iid = index, text = index, tags = (color,), values = (
                 row['artist'][0], row['song'], row['rating'], genre, emotion, row['year_added'], row['language'], vocal, instrument, row['album']))
-        self.tree.tag_configure('green', foreground='green')
-        self.tree.tag_configure('red', foreground='orange')
+        self.tree.tag_configure(self.LABEL_COLOR, foreground=self.LABEL_COLOR) 
+        self.tree.tag_configure(self.ACCENT_COLOR_SECONDARY, foreground=self.ACCENT_COLOR_SECONDARY) 
         
         # pack and configure to frame 
         self.tree_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
@@ -441,8 +481,8 @@ class UserInterface(tk.Frame):
     def initialize_add_song_layout(self):
         self.add_song_listbox_height = 12
 
-        self.link_l = tk.Label(self.add_song_lf, text = "Link")
-        self.link_e = tk.Entry(self.add_song_lf, state = 'disabled')
+        self.link_l = tk.Label(self.add_song_lf, text = "Link", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.link_e = tk.Entry(self.add_song_lf, state = 'disabled', fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR, disabledforeground = self.LABEL_COLOR, disabledbackground = self.BACKGROUND_COLOR)
         self.link_l.bind('<Button-1>', self.go_to_youtube)
         self.link_e.bind('<Button-1>', self.go_to_youtube)
 
@@ -451,98 +491,102 @@ class UserInterface(tk.Frame):
         except:
             pass
         
-        self.song_l = tk.Label(self.add_song_lf, text = "Song")
-        self.song_e = tk.Entry(self.add_song_lf)
+        self.song_l = tk.Label(self.add_song_lf, text = "Song", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR) 
+        self.song_e = tk.Entry(self.add_song_lf, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR)
         self.song_l.bind('<Button-1>', self.switch_song_artists)
-        self.artist_l = tk.Label(self.add_song_lf, text = "Artist(s)")
-        self.artist_e = tk.Entry(self.add_song_lf)
+        self.artist_l = tk.Label(self.add_song_lf, text = "Artist(s)", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.artist_e = tk.Entry(self.add_song_lf, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR)
         self.artist_l.bind('<Button-1>', self.switch_song_artists)
-        self.genre_l = tk.Label(self.add_song_lf, text = "Genre(s)")
+        self.genre_l = tk.Label(self.add_song_lf, text = "Genre(s)", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.genre_f = tk.Frame(self.add_song_lf)
         self.genre_f.grid(row = 8, column = 1, sticky = 'w')
-        self.genre_sb = tk.Scrollbar(self.genre_f)
+        self.genre_sb = ttk.Scrollbar(self.genre_f)
         self.genre_sb.pack(side = 'right', fill = 'y')
-        self.genre_lb = tk.Listbox(self.genre_f, exportselection = 0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.genre_sb.set, selectmode = "multiple")
+        self.genre_lb = tk.Listbox(self.genre_f, exportselection = 0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.genre_sb.set, selectmode = "multiple", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.genre_values = sorted(["Electric", "Jazz", "Comedy", "Pop", "Singer songwriter", "Rock", "Metal", "Soul", "House", "Vocal", "Rap", "Country", "Big Band", "Trippy", "Art", "Funk"])
         for i in range(0, len(self.genre_values)):
             self.genre_lb.insert(i, self.genre_values[i])
+            self.genre_lb.itemconfig(i, selectbackground = self.ACCENT_COLOR)
         self.genre_lb.pack(side = 'left')
         self.genre_sb.config(command = self.genre_lb.yview)
         self.genre_lb.bind("<Button-1>", self.set_antifilter_color)
         self.genre_lb.bind("<Button-3>", self.set_antifilter_color)
         
-        self.album_l = tk.Label(self.add_song_lf, text = "Album")
-        self.album_e = tk.Entry(self.add_song_lf)
-        self.type_l = tk.Label(self.add_song_lf, text = "Type")
+        self.album_l = tk.Label(self.add_song_lf, text = "Album", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.album_e = tk.Entry(self.add_song_lf, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR)
+        self.type_l = tk.Label(self.add_song_lf, text = "Type", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.type_sv = tk.StringVar()
         self.type_values = ["", "Single", "EP", "Cover", "Remix", "Mashup"]
-        self.type_cb = ttk.Combobox(self.add_song_lf, textvariable = self.type_sv, state = 'readonly', values = self.type_values)
+        self.type_cb = ttk.Combobox(self.add_song_lf, textvariable = self.type_sv, state = 'readonly', values = self.type_values, foreground = self.LABEL_COLOR)
         self.type_cb.current(0)
-        self.release_year_l = tk.Label(self.add_song_lf, text = "Release year")
-        self.release_year_e = tk.Entry(self.add_song_lf)
-        self.clear_b = tk.Button(self.add_song_lf, text = 'Clear', command = self.clear_filter_entries)
-        self.filter_b = tk.Button(self.add_song_lf, text = 'Filter', command = self.filter_using_entries)
-        self.duration_l = tk.Label(self.add_song_lf, text = "Duration (s)")
-        self.duration_e = tk.Entry(self.add_song_lf, state = 'disabled')
-        self.rating_l = tk.Label(self.add_song_lf, text = f"Rating: {self.RATING_DEFAULT}")
-        self.rating_s = tk.Scale(self.add_song_lf, from_ = 0, to = 100, resolution = 1, command = self.update_rating, orient = 'horizontal')
+        self.release_year_l = tk.Label(self.add_song_lf, text = "Release year", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.release_year_e = tk.Entry(self.add_song_lf, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR)
+        self.clear_b = tk.Button(self.add_song_lf, text = 'Clear', command = self.clear_filter_entries, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.filter_b = tk.Button(self.add_song_lf, text = 'Filter', command = self.filter_using_entries, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.duration_l = tk.Label(self.add_song_lf, text = "Duration (s)", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.duration_e = tk.Entry(self.add_song_lf, state = 'disabled', fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR, disabledforeground = self.LABEL_COLOR, disabledbackground = self.BACKGROUND_COLOR)
+        self.rating_l = tk.Label(self.add_song_lf, text = f"Rating: {self.RATING_DEFAULT}", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.rating_s = ttk.Scale(self.add_song_lf, from_ = 0, to = 100, command = self.update_rating, orient = 'horizontal') # resolution = 1, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR
         self.rating_s.set(self.RATING_DEFAULT)
         
-        self.sophisticated_l = tk.Label(self.add_song_lf, text = f"Sophisticated: {self.SOPHISTICATED_DEFAULT}", width = 14)
-        self.sophisticated_s = tk.Scale(self.add_song_lf, from_ = 0, to = 100, resolution = 1, command = self.update_sophisticated, orient = 'horizontal')
+        self.sophisticated_l = tk.Label(self.add_song_lf, text = f"Sophisticated: {self.SOPHISTICATED_DEFAULT}", width = 14, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.sophisticated_s = ttk.Scale(self.add_song_lf, from_ = 0, to = 100, command = self.update_sophisticated, orient = 'horizontal')
         self.sophisticated_s.set(self.SOPHISTICATED_DEFAULT)
 
-        self.emotion_l = tk.Label(self.add_song_lf, text = "Emotion(s)")
+        self.emotion_l = tk.Label(self.add_song_lf, text = "Emotion(s)", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.emotion_f = tk.Frame(self.add_song_lf)
         self.emotion_f.grid(row = 8, column = 3, sticky = 'w')
-        self.emotion_sb = tk.Scrollbar(self.emotion_f)
+        self.emotion_sb = ttk.Scrollbar(self.emotion_f)
         self.emotion_sb.pack(side = 'right', fill = 'y')
-        self.emotion_lb = tk.Listbox(self.emotion_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.emotion_sb.set, selectmode = "multiple")
-        self.emotion_values = sorted(["Happy", "Sad", "Love", "Chill", "Chaos", "Gaming", "Focus", "Visualization", "Nostalgia", "Meditation"])
+        self.emotion_lb = tk.Listbox(self.emotion_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.emotion_sb.set, selectmode = "multiple", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.emotion_values = sorted(["Happy", "Sad", "Love", "Chill", "Chaos", "Gaming", "Focus", "Visualization", "Nostalgia", "Meditation", "Sport"])
         for i in range(0, len(self.emotion_values)):
             self.emotion_lb.insert(i, self.emotion_values[i])
+            self.emotion_lb.itemconfig(i, selectbackground = self.ACCENT_COLOR)
         self.emotion_lb.pack(side = 'left')
         self.emotion_sb.config(command = self.emotion_lb.yview)
         self.emotion_lb.bind("<Button-1>", self.set_antifilter_color)
         self.emotion_lb.bind("<Button-3>", self.set_antifilter_color)
 
-        self.instrument_l = tk.Label(self.add_song_lf, text = "Instrument(s)")
+        self.instrument_l = tk.Label(self.add_song_lf, text = "Instrument(s)", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.instrument_f = tk.Frame(self.add_song_lf)
         self.instrument_f.grid(row = 8, column = 5, sticky = 'w')
-        self.instrument_sb = tk.Scrollbar(self.instrument_f)
+        self.instrument_sb = ttk.Scrollbar(self.instrument_f)
         self.instrument_sb.pack(side = 'right', fill = 'y')
-        self.instrument_lb = tk.Listbox(self.instrument_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.instrument_sb.set, selectmode = "multiple")
+        self.instrument_lb = tk.Listbox(self.instrument_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.instrument_sb.set, selectmode = "multiple", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.instrument_values = sorted(["Guitar", "Piano", 'Flute', 'Drum', 'Harmonica', 'Saxophone', 'Trumpet', 'Violin', 'Bass'])
         for i in range(0, len(self.instrument_values)):
             self.instrument_lb.insert(i, self.instrument_values[i])
+            self.instrument_lb.itemconfig(i, selectbackground = self.ACCENT_COLOR)
         self.instrument_lb.pack(side = 'left')
         self.instrument_sb.config(command = self.instrument_lb.yview)
         self.instrument_lb.bind("<Button-1>", self.set_antifilter_color)
         self.instrument_lb.bind("<Button-3>", self.set_antifilter_color)
 
-        self.vocal_l = tk.Label(self.add_song_lf, text = "Vocal(s)")
+        self.vocal_l = tk.Label(self.add_song_lf, text = "Vocal(s)", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.vocal_f = tk.Frame(self.add_song_lf)
         self.vocal_f.grid(row = 8, column = 7, sticky = 'w')
-        self.vocal_sb = tk.Scrollbar(self.vocal_f)
+        self.vocal_sb = ttk.Scrollbar(self.vocal_f)
         self.vocal_sb.pack(side = 'right', fill = 'y')
-        self.vocal_lb = tk.Listbox(self.vocal_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.vocal_sb.set, selectmode = "multiple")
+        self.vocal_lb = tk.Listbox(self.vocal_f, exportselection=0, height = self.add_song_listbox_height, width = 15, yscrollcommand = self.vocal_sb.set, selectmode = "multiple", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.vocal_values = ["Female", "Male", "Duo", "Trio", "Quartet", "Barbershop", "Multiple", "Acapella"]
         for i in range(0, len(self.vocal_values)):
             self.vocal_lb.insert(i, self.vocal_values[i])
+            self.vocal_lb.itemconfig(i, selectbackground = self.ACCENT_COLOR)
         self.vocal_lb.pack(side = 'left')
         self.vocal_sb.config(command = self.vocal_lb.yview)
         self.vocal_lb.bind("<<ListboxSelect>>", self.set_vocal_default)
         self.vocal_lb.bind("<Button-1>", self.set_antifilter_color)
         self.vocal_lb.bind("<Button-3>", self.set_antifilter_color)
 
-        self.language_l = tk.Label(self.add_song_lf, text = "Language")
+        self.language_l = tk.Label(self.add_song_lf, text = "Language", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
         self.language_values = ["", "English", "Dutch", "French", "German", "Asian"]
-        self.language_cb = ttk.Combobox(self.add_song_lf, state = 'readonly', values = self.language_values)
+        self.language_cb = ttk.Combobox(self.add_song_lf, state = 'readonly', values = self.language_values, foreground = self.LABEL_COLOR)
         self.language_cb.current(0)
-        self.year_added_l = tk.Label(self.add_song_lf, text = "Year added")
-        self.year_added_e = tk.Entry(self.add_song_lf, state = 'disabled')
-
-        self.add_database_b = tk.Button(self.add_song_lf, text = "Update database", command = self.add_song_to_database)
+        self.year_added_l = tk.Label(self.add_song_lf, text = "Year added", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.year_added_e = tk.Entry(self.add_song_lf, state = 'disabled', fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR, insertbackground = self.LABEL_COLOR, disabledforeground = self.LABEL_COLOR, disabledbackground = self.BACKGROUND_COLOR)
+        
+        self.add_database_b = tk.Button(self.add_song_lf, text = "Update database", command = self.add_song_to_database, fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
 
         self.song_l.grid(row = 0, column = 0, sticky = 'e')
         self.song_e.grid(row = 0, column = 1, sticky = 'w')
@@ -600,14 +644,14 @@ class UserInterface(tk.Frame):
         iid = self.vocal_lb.nearest(y = event.y)
         # left click
         if event.num == 1:
-            event.widget.itemconfig(iid, selectbackground = "")
+            event.widget.itemconfig(iid, selectbackground = self.ACCENT_COLOR)
         # right click 
         if event.num == 3:
-            if event.widget.itemcget(index = iid, option = 'selectbackground') == '':
-                event.widget.itemconfig(iid, selectbackground = "red")
+            if event.widget.itemcget(index = iid, option = 'selectbackground') == self.ACCENT_COLOR:
+                event.widget.itemconfig(iid, selectbackground = self.ACCENT_COLOR_SECONDARY)
                 event.widget.selection_set(iid)
-            elif event.widget.itemcget(index = iid, option = 'selectbackground') == 'red':
-                event.widget.itemconfig(iid, selectbackground = "")
+            elif event.widget.itemcget(index = iid, option = 'selectbackground') == self.ACCENT_COLOR_SECONDARY:
+                event.widget.itemconfig(iid, selectbackground = self.ACCENT_COLOR)
                 event.widget.selection_clear(iid)
         
         
@@ -617,11 +661,11 @@ class UserInterface(tk.Frame):
 
 
     def update_rating(self, *args):
-        self.rating_l.config(text = f"Rating: {str(self.rating_s.get())}")
+        self.rating_l.config(text = f"Rating: {str(int(self.rating_s.get()))}")
 
 
     def update_sophisticated(self, *args):
-        self.sophisticated_l.config(text = f"Sophisticated: {str(self.sophisticated_s.get())}")
+        self.sophisticated_l.config(text = f"Sophisticated: {str(int(self.sophisticated_s.get()))}")
 
 
     def lift_screen(self):
@@ -631,9 +675,8 @@ class UserInterface(tk.Frame):
 
 
     def add_song_to_database(self):
-        if self.song_e.get() == "":
-            self.add_song_lf.config(text = "Youtube-DL: No metadata entered in fields", fg = 'red')
-            # self.songlist_lf.config(text = 'test', fg = 'red')
+        if self.song_e.get() == "": 
+            self.add_song_lf.config(text = "Youtube-DL: No metadata entered in fields", fg = 'red', bg = self.BACKGROUND_COLOR)
             return
 
         meta = {}
@@ -672,9 +715,9 @@ class UserInterface(tk.Frame):
         self.JSON = self.MDB.load_database(self.MDB.database_path)
 
         if updated:
-            self.add_song_lf.config(text = "Youtube-DL: Existing song metadata updated!", fg = 'green')
+            self.add_song_lf.config(text = "Youtube-DL: Existing song metadata updated!", fg = 'green', bg = self.BACKGROUND_COLOR)
         else:
-            self.add_song_lf.config(text = "Youtube-DL: Upload successful!", fg = 'green')
+            self.add_song_lf.config(text = "Youtube-DL: Upload successful!", fg = 'green', bg = self.BACKGROUND_COLOR)
             
         self.tree.item(self.meta_tree_iid, tags = ('green',))
         self.playlist_tree.item(self.meta_tree_iid, tags = ('green',))
@@ -688,8 +731,8 @@ class UserInterface(tk.Frame):
             values = self.tree.item(iid)['values']
             try:
                 self.playlist_tree.insert(parent = '', index = 'end', iid = iid, text = iid, values = values, tags = self.tree.item(iid)['tags'])
-                self.playlist_tree.tag_configure('green', foreground='green')
-                self.playlist_tree.tag_configure('red', foreground='orange')
+                self.playlist_tree.tag_configure(self.LABEL_COLOR, foreground=self.LABEL_COLOR) 
+                self.playlist_tree.tag_configure(self.ACCENT_COLOR_SECONDARY, foreground=self.ACCENT_COLOR_SECONDARY)
                 self.playlist_lf.config(text = 'Playlist: Added all songs!', fg = 'green')
             except tk.TclError as e:
                 self.playlist_lf.config(text = 'Playlist: at least one song was duplicate!', fg = 'orange')
@@ -701,7 +744,7 @@ class UserInterface(tk.Frame):
             try:
                 self.playlist_tree.insert(parent = '', index = index, iid = iid, text = iid, values = values, tags = self.tree.item(iid)['tags'])
                 self.playlist_tree.tag_configure('green', foreground='green')
-                self.playlist_tree.tag_configure('red', foreground='orange')
+                self.playlist_tree.tag_configure(self.ACCENT_COLOR_SECONDARY, foreground=self.ACCENT_COLOR_SECONDARY)
                 self.playlist_lf.config(text = 'Playlist: Added song!', fg = 'green')
                 return True
             except tk.TclError as e:
@@ -781,8 +824,10 @@ class UserInterface(tk.Frame):
             self.playlist_lf.config(text = 'Playlist with a similar name exists, try another name', fg = 'red') 
 
         # add playlist to playlists_tree for use right away 
+        color = self.LABEL_COLOR
         playlist_path = self.PLAYLIST_PATH / f'{playlist_name}.json'
-        self.playlist_list_tree.insert(parent = '', index = 'end', iid = playlist_path, text = playlist_path, values = playlist_name)
+        self.playlist_list_tree.insert(parent = '', index = 'end', iid = playlist_path, text = playlist_path, tags = (color,), values = playlist_name)
+        self.playlist_list_tree.tag_configure(self.LABEL_COLOR, foreground=self.LABEL_COLOR) 
 
 
     def get_annotations(self, iid = None):
@@ -823,7 +868,7 @@ class UserInterface(tk.Frame):
 
             self.set_gui_values_after_download(meta = meta)
         else:
-            self.add_song_lf.config(text = "Youtube-DL: No Youtube link copied", fg = 'red')
+            self.add_song_lf.config(text = "Youtube-DL: No Youtube link copied", fg = 'red', bg = self.BACKGROUND_COLOR)
 
 
     def set_volume_icon(self, volume):
@@ -837,8 +882,11 @@ class UserInterface(tk.Frame):
             self.player_sound_btn.config(image = self.player_sound_img)
 
 
-    def slide_volume(self, event):
-        volume = int(self.player_volume_s.get())
+    def slide_volume(self, event, volume = None):
+        if volume == None:
+            volume = int(self.player_volume_s.get())
+        else:
+            self.player_volume_s.set(volume)
         self.set_volume_icon(volume)
         player.Player.set_volume(volume/100)
         if volume != 0:
@@ -890,7 +938,12 @@ class UserInterface(tk.Frame):
 
 
     def on_single_click_either_tree(self, iid):
-        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed", fg = 'black')
+        # TODO adjust all self.add_song_lf type labelframe to having a ttk.Label as their labelwidget parameter and then use these configs to set style like normal
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed") 
+        self.add_song_lf_l.config(foreground = 'red', background = 'black')
+
+
+
 
         db = self.JSON.loc[iid]
 
@@ -976,7 +1029,7 @@ class UserInterface(tk.Frame):
         self.rating_s.set(self.RATING_DEFAULT)
         self.sophisticated_s.set(self.SOPHISTICATED_DEFAULT)
 
-        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata for filtering!", fg = 'black')
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata for filtering!", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
 
 
     def filter_using_entries(self):
@@ -993,12 +1046,12 @@ class UserInterface(tk.Frame):
             for voca in vocal:
                 for index, values in df['vocal'].items(): # list
                     value = self.vocal_values[int(voca)]
-                    if value not in values and self.vocal_lb.itemcget(index = voca, option = 'selectbackground') != 'red':
+                    if value not in values and self.vocal_lb.itemcget(index = voca, option = 'selectbackground') != self.ACCENT_COLOR_SECONDARY:
                         reattach_index.remove(index)
             for voca in vocal:
                 for index, values in df['vocal'].items(): # list
                     value = self.vocal_values[int(voca)]            
-                    if value in values and self.vocal_lb.itemcget(index = voca, option = 'selectbackground') == 'red':
+                    if value in values and self.vocal_lb.itemcget(index = voca, option = 'selectbackground') == self.ACCENT_COLOR_SECONDARY:
                         if index in reattach_index:
                             reattach_index.remove(index)
             df = df.loc[reattach_index]
@@ -1017,12 +1070,12 @@ class UserInterface(tk.Frame):
             for ins in instrument:
                 for index, values in df['instrument'].items(): # list
                     value = self.instrument_values[int(ins)]
-                    if value not in values and self.instrument_lb.itemcget(index = ins, option = 'selectbackground') != 'red':
+                    if value not in values and self.instrument_lb.itemcget(index = ins, option = 'selectbackground') != self.ACCENT_COLOR_SECONDARY:
                         reattach_index.remove(index)
             for ins in instrument:
                 for index, values in df['instrument'].items(): # list
                     value = self.instrument_values[int(ins)]
-                    if value in values and self.instrument_lb.itemcget(index = ins, option = 'selectbackground') == 'red':
+                    if value in values and self.instrument_lb.itemcget(index = ins, option = 'selectbackground') == self.ACCENT_COLOR_SECONDARY:
                         if index in reattach_index:
                             reattach_index.remove(index)
             df = df.loc[reattach_index]
@@ -1050,13 +1103,13 @@ class UserInterface(tk.Frame):
             for emo in emotion:
                 for index, values in df['emotion'].items(): # list
                     value = self.emotion_values[int(emo)]
-                    if value not in values and self.emotion_lb.itemcget(index = emo, option = 'selectbackground') != 'red':
+                    if value not in values and self.emotion_lb.itemcget(index = emo, option = 'selectbackground') != self.ACCENT_COLOR_SECONDARY:
                         reattach_index.remove(index)
             # if dont want emo, but there, remove
             for emo in emotion:
                 for index, values in df['emotion'].items(): # list
                     value = self.emotion_values[int(emo)]
-                    if value in values and self.emotion_lb.itemcget(index = emo, option = 'selectbackground') == 'red':
+                    if value in values and self.emotion_lb.itemcget(index = emo, option = 'selectbackground') == self.ACCENT_COLOR_SECONDARY:
                         if index in reattach_index:
                             reattach_index.remove(index)
             df = df.loc[reattach_index]
@@ -1067,12 +1120,12 @@ class UserInterface(tk.Frame):
             for gen in genre:
                 for index, values in df['genre'].items(): # list
                     value = self.genre_values[int(gen)]
-                    if value not in values and self.genre_lb.itemcget(index = gen, option = 'selectbackground') != 'red':
+                    if value not in values and self.genre_lb.itemcget(index = gen, option = 'selectbackground') != self.ACCENT_COLOR_SECONDARY:
                         reattach_index.remove(index)
             for gen in genre:
                 for index, values in df['genre'].items(): # list
                     value = self.genre_values[int(gen)]
-                    if value in values and self.genre_lb.itemcget(index = gen, option = 'selectbackground') == 'red':
+                    if value in values and self.genre_lb.itemcget(index = gen, option = 'selectbackground') == self.ACCENT_COLOR_SECONDARY:
                         if index in reattach_index:
                             reattach_index.remove(index)
             df = df.loc[reattach_index]
@@ -1171,7 +1224,7 @@ class UserInterface(tk.Frame):
         self.song_filepath = meta['filepath']
         self.meta_tree_iid = meta['tree_iid']
         
-        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed", fg = 'black')
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
 
 
     def on_double_click_playlist_tree(self, event):
@@ -1402,6 +1455,8 @@ class UserInterface(tk.Frame):
                     self.set_previous_song()
                 if 'shuffle-playlist' == msg:
                     self.shuffle_playlist()
+                if 'volume' in msg:
+                    self.slide_volume(event = None, volume = player.Player.get_volume()*100)
             except queue.Empty:
                 pass
 
@@ -1417,20 +1472,30 @@ if __name__ == '__main__':
     # root.minsize(500, 500)
     root.maxsize(root.winfo_screenwidth(), root.winfo_screenheight())
     app = UserInterface(root)
-    # app.configure(background = '#ffffff')
+    # app.configure(background = '#ffffff') # TODO does this help ? 
 
     root.mainloop()
 
 
 
+# TODO add label above/below song progression slider to show title of currently playing song 
+
+# TODO check tkinter themes/styles again, now that the screen doesn't pop up because I initialize it in a different place! 
 
 
+# TODO create delete button to delete song from songlist and database 
 
+# TODO create update button to update playlist 
 
 # TODO the + and - buttons are going to have functionality for song rating which gets saved instantly in JSON MDB or temp MDB which updates main JSON MDB at certain intervals
 # TODO create ? button that shows popup screen for all hotkeys 
 
-# TODO loop over all downloaded entries and perform BPM calculation once
+
+
+
+
+
+# TODO once all songs green, loop over all downloaded entries and perform BPM calculation once
 # TODO use pydub to slice audio (when songs are silent at begin or end, or want to make a meme small fragment easily)
 
 # TODO need a way to add music from mp3 instead of YT 
@@ -1440,6 +1505,7 @@ if __name__ == '__main__':
 
 # TODO artists to add
 # wudstik 
+# maaike ouboter
 # the white stripes
 # gers pardoel
 # the police  
