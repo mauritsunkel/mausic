@@ -52,6 +52,9 @@ class UserInterface(tk.Frame):
     BACKGROUND_COLOR = 'black'
     ACCENT_COLOR = 'lightgreen'
     ACCENT_COLOR_SECONDARY = 'orange'
+    ERROR_COLOR = 'red'
+    SUCCESS_COLOR = 'green'
+    WARNING_COLOR = 'orange'
 
     def __init__(self, parent = None):
         tk.Frame.__init__(self, parent)
@@ -127,11 +130,14 @@ class UserInterface(tk.Frame):
             try:
                 self.playlist_tree.insert(parent = '', index = 'end', iid = index, text = index, values = values, tags = self.tree.item(index)['tags'])
             except tk.TclError as e:
-                self.playlist_lf.config(text = "Playlist: cannot add duplicates", fg = 'red')
+                self.playlist_lf.config(text = "Playlist: cannot add duplicates")
+                self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
+                
 
         self.recolor_trees()
 
-        self.playlist_lf.config(text = f"Playlist {Path(playlist_file).stem} initialized", fg = 'green')
+        self.playlist_lf.config(text = f"Playlist {Path(playlist_file).stem} initialized")
+        self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
 
         if path == None:
             # set playlists tree
@@ -156,10 +162,12 @@ class UserInterface(tk.Frame):
      
 
     def initialize_global_layout(self):
-        self.add_song_lf_l = ttk.Label(text = "Youtube-DL: Adjust metadata for filtering!") # TODO see next todo and fix that everywhere needed 
+        self.add_song_lf_l = ttk.Label(text = "Youtube-DL: Adjust metadata for filtering!")
         self.add_song_lf = ttk.LabelFrame(self, labelwidget = self.add_song_lf_l)
         self.songlist_lf = ttk.LabelFrame(self, text = "Songlist")
-        self.playlist_lf = tk.LabelFrame(self, text = "Playlist", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.playlist_lf_l = ttk.Label(text = "Playlist")
+        self.playlist_lf = ttk.LabelFrame(self, labelwidget = self.playlist_lf_l) 
+        self.playlist_lf_l.config(foreground = self.LABEL_COLOR, background = self.BACKGROUND_COLOR) # TODO lf_label still green, also not changing when changing playlists 
         self.player_playlist_lf = ttk.LabelFrame(self, text = "Player & Playlists")
         self.player_f = tk.Frame(self.player_playlist_lf, bg = self.BACKGROUND_COLOR)
         self.playlist_list_f = tk.Frame(self.player_playlist_lf, bg = self.BACKGROUND_COLOR)
@@ -676,7 +684,9 @@ class UserInterface(tk.Frame):
 
     def add_song_to_database(self):
         if self.song_e.get() == "": 
-            self.add_song_lf.config(text = "Youtube-DL: No metadata entered in fields", fg = 'red', bg = self.BACKGROUND_COLOR)
+            self.add_song_lf.config(text = "Youtube-DL: No metadata entered in fields")
+            self.add_song_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
+        
             return
 
         meta = {}
@@ -715,12 +725,14 @@ class UserInterface(tk.Frame):
         self.JSON = self.MDB.load_database(self.MDB.database_path)
 
         if updated:
-            self.add_song_lf.config(text = "Youtube-DL: Existing song metadata updated!", fg = 'green', bg = self.BACKGROUND_COLOR)
+            self.add_song_lf.config(text = "Youtube-DL: Existing song metadata updated!")
+            self.add_song_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
         else:
-            self.add_song_lf.config(text = "Youtube-DL: Upload successful!", fg = 'green', bg = self.BACKGROUND_COLOR)
+            self.add_song_lf.config(text = "Youtube-DL: Upload successful!")
+            self.add_song_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
             
-        self.tree.item(self.meta_tree_iid, tags = ('green',))
-        self.playlist_tree.item(self.meta_tree_iid, tags = ('green',))
+        self.tree.item(self.meta_tree_iid, tags = (self.SUCCESS_COLOR,))
+        self.playlist_tree.item(self.meta_tree_iid, tags = (self.SUCCESS_COLOR,))
         # recolor trees based on tags after adding to database based on if downloaded
         self.recolor_trees()
         
@@ -733,9 +745,11 @@ class UserInterface(tk.Frame):
                 self.playlist_tree.insert(parent = '', index = 'end', iid = iid, text = iid, values = values, tags = self.tree.item(iid)['tags'])
                 self.playlist_tree.tag_configure(self.LABEL_COLOR, foreground=self.LABEL_COLOR) 
                 self.playlist_tree.tag_configure(self.ACCENT_COLOR_SECONDARY, foreground=self.ACCENT_COLOR_SECONDARY)
-                self.playlist_lf.config(text = 'Playlist: Added all songs!', fg = 'green')
+                self.playlist_lf.config(text = 'Playlist: Added all songs!')
+                self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
             except tk.TclError as e:
-                self.playlist_lf.config(text = 'Playlist: at least one song was duplicate!', fg = 'orange')
+                self.playlist_lf.config(text = 'Playlist: at least one song was duplicate!')
+                self.playlist_lf_l.config(foreground = self.WARNING_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def add_songs_to_playlist(self, index = 'end'):
@@ -743,35 +757,41 @@ class UserInterface(tk.Frame):
             values = self.tree.item(iid)['values']
             try:
                 self.playlist_tree.insert(parent = '', index = index, iid = iid, text = iid, values = values, tags = self.tree.item(iid)['tags'])
-                self.playlist_tree.tag_configure('green', foreground='green')
+                self.playlist_tree.tag_configure(self.SUCCESS_COLOR, foreground=self.SUCCESS_COLOR)
                 self.playlist_tree.tag_configure(self.ACCENT_COLOR_SECONDARY, foreground=self.ACCENT_COLOR_SECONDARY)
-                self.playlist_lf.config(text = 'Playlist: Added song!', fg = 'green')
+                self.playlist_lf.config(text = 'Playlist: Added song!')
+                self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
                 return True
             except tk.TclError as e:
-                self.playlist_lf.config(text = 'Playlist: Cannot add duplicate song to playlist.', fg = 'red')
+                self.playlist_lf.config(text = 'Playlist: Cannot add duplicate song to playlist.')
+                self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
                 return False
 
 
     def remove_all_songs_from_playlist(self):
         for iid in self.playlist_tree.get_children():
             self.playlist_tree.delete(iid)
-        self.playlist_lf.config(text = 'Playlist: Removed all songs!', fg = 'green')
+        self.playlist_lf.config(text = 'Playlist: Removed all songs!')
+        self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def remove_songs_from_playlist(self):
         for iid in self.playlist_tree.selection():
             self.playlist_tree.delete(iid)
-        self.playlist_lf.config(text = 'Playlist: Removed song!', fg = 'green')
+        self.playlist_lf.config(text = 'Playlist: Removed song!')
+        self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def check_playlist_name(self):
         if self.save_songs_to_playlist_e.get() == "":
-            self.playlist_lf.config(text = 'Need a name to save the current playlist', fg = 'red') 
+            self.playlist_lf.config(text = 'Need a name to save the current playlist') 
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return False
         accepted_str = 'qwertyuiopasdfghjklzxcvbnm1234567890-_+ '
         for char in self.save_songs_to_playlist_e.get():
             if str(char).lower() not in accepted_str:
-                self.playlist_lf.config(text = f'Character {char} not accepted for playlist name, accepted characters are {accepted_str}', fg = 'red') 
+                self.playlist_lf.config(text = f'Character {char} not accepted for playlist name, accepted characters are {accepted_str}') 
+                self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
                 return False
         return True
 
@@ -783,7 +803,8 @@ class UserInterface(tk.Frame):
         for iid in self.playlist_tree.get_children():
             iids.append(int(iid))
         if iids == []:
-            self.playlist_lf.config(text = 'There are no songs to save in a car playlist', fg = 'red') 
+            self.playlist_lf.config(text = 'There are no songs to save in a car playlist') 
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return
 
         # create new folder for playlist 
@@ -791,7 +812,8 @@ class UserInterface(tk.Frame):
         try:
             parent.mkdir(parents=True, exist_ok=False)
         except FileExistsError as e:
-            self.playlist_lf.config(text = f'Car playlist with name {self.save_songs_to_playlist_e.get()} already exists, please pick another name.', fg = 'red') 
+            self.playlist_lf.config(text = f'Car playlist with name {self.save_songs_to_playlist_e.get()} already exists, please pick another name.') 
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return
         # for all songs in playlist, if they are downloaded, copy them into the car_playlist folder 
         for iid in iids:
@@ -799,7 +821,8 @@ class UserInterface(tk.Frame):
                 my_file = self.JSON.loc[iid]['filepath']
                 to_file = Path(parent, Path(self.JSON.loc[iid]['filepath']).stem + Path(self.JSON.loc[iid]['filepath']).suffix)
                 copy(my_file, to_file)  # from shutil package
-        self.playlist_lf.config(text = f'Car playlist successfuly created!', fg = 'green') 
+        self.playlist_lf.config(text = f'Car playlist successfuly created!') 
+        self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def save_songs_from_playlist(self, event = None):
@@ -811,7 +834,8 @@ class UserInterface(tk.Frame):
         for iid in self.playlist_tree.get_children():
             iids['iids'].append(int(iid))
         if iids == []:
-            self.playlist_lf.config(text = 'There are no songs to save in a playlist', fg = 'red') 
+            self.playlist_lf.config(text = 'There are no songs to save in a playlist') 
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return
 
         df = pd.DataFrame(iids)
@@ -819,9 +843,11 @@ class UserInterface(tk.Frame):
         # check if playlist saved successfully
         succes = self.MDB.save_playlist_database(df, playlist_name)
         if succes:
-            self.playlist_lf.config(text = 'Playlist successfully saved!', fg = 'green') 
+            self.playlist_lf.config(text = 'Playlist successfully saved!') 
+            self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
         else:
-            self.playlist_lf.config(text = 'Playlist with a similar name exists, try another name', fg = 'red') 
+            self.playlist_lf.config(text = 'Playlist with a similar name exists, try another name') 
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
 
         # add playlist to playlists_tree for use right away 
         color = self.LABEL_COLOR
@@ -843,7 +869,8 @@ class UserInterface(tk.Frame):
                         return
             
             # success message
-            self.playlist_lf.configure(text = 'Playlist: downloading song ...', fg = 'orange')
+            self.playlist_lf.configure(text = 'Playlist: downloading song ...')
+            self.playlist_lf_l.config(foreground = self.WARNING_COLOR, background = self.BACKGROUND_COLOR)
             # download and extract raw metadata
             raw_meta = self.MD.download_mp3(link = clip)
             # get filepath to sava in DB and load song into mixer 
@@ -864,11 +891,13 @@ class UserInterface(tk.Frame):
             self.TIME = 0
 
             # success message
-            self.playlist_lf.configure(text = 'Playlist: Download successfull, do not forget to update song metadata and press "Add to database"!', fg = 'green')
+            self.playlist_lf.configure(text = 'Playlist: Download successfull, do not forget to update song metadata and press "Add to database"!')
+            self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
 
             self.set_gui_values_after_download(meta = meta)
         else:
-            self.add_song_lf.config(text = "Youtube-DL: No Youtube link copied", fg = 'red', bg = self.BACKGROUND_COLOR)
+            self.add_song_lf.config(text = "Youtube-DL: No Youtube link copied")
+            self.add_song_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def set_volume_icon(self, volume):
@@ -911,7 +940,8 @@ class UserInterface(tk.Frame):
 
         if not self.add_songs_to_playlist(index = 0):
             self.reset_song(iid = iid)
-            self.playlist_lf.config(text = 'Playlist: playing!', fg = 'green')
+            self.playlist_lf.config(text = 'Playlist: playing!')
+            self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
             return
     	# check if song downloaded
         if self.JSON.loc[iid]['downloaded'] == False:
@@ -923,7 +953,8 @@ class UserInterface(tk.Frame):
             return
         # if already downloaded get filepath, load song, and reset time, progressbar and volume 
         self.reset_song(iid = iid)
-        self.playlist_lf.config(text = 'Playlist: playing!', fg = 'green')
+        self.playlist_lf.config(text = 'Playlist: playing!')
+        self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
 
 
 
@@ -938,12 +969,8 @@ class UserInterface(tk.Frame):
 
 
     def on_single_click_either_tree(self, iid):
-        # TODO adjust all self.add_song_lf type labelframe to having a ttk.Label as their labelwidget parameter and then use these configs to set style like normal
         self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed") 
-        self.add_song_lf_l.config(foreground = 'red', background = 'black')
-
-
-
+        self.add_song_lf_l.config(foreground = self.LABEL_COLOR, background = self.BACKGROUND_COLOR)
 
         db = self.JSON.loc[iid]
 
@@ -1029,7 +1056,8 @@ class UserInterface(tk.Frame):
         self.rating_s.set(self.RATING_DEFAULT)
         self.sophisticated_s.set(self.SOPHISTICATED_DEFAULT)
 
-        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata for filtering!", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata for filtering!")
+        self.add_song_lf_l.config(foreground = self.LABEL_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def filter_using_entries(self):
@@ -1224,7 +1252,8 @@ class UserInterface(tk.Frame):
         self.song_filepath = meta['filepath']
         self.meta_tree_iid = meta['tree_iid']
         
-        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed", fg = self.LABEL_COLOR, bg = self.BACKGROUND_COLOR)
+        self.add_song_lf.config(text = "Youtube-DL: Adjust metadata if needed")
+        self.add_song_lf_l.config(foreground = self.LABEL_COLOR, background = self.BACKGROUND_COLOR)
 
 
     def on_double_click_playlist_tree(self, event):
@@ -1244,6 +1273,7 @@ class UserInterface(tk.Frame):
 
         self.reset_song(iid = iid)
         self.playlist_lf.config(text = 'Playlist: playing!')
+        self.playlist_lf_l.config(foreground = self.SUCCESS_COLOR, background = self.BACKGROUND_COLOR)
         
 
     def unpause_song(self):
@@ -1267,7 +1297,8 @@ class UserInterface(tk.Frame):
 
     def shuffle_playlist(self):
         if self.playlist_tree.get_children() == ():
-            self.playlist_lf.config(text = 'Playlist: no songs to shuffle', fg = 'red')
+            self.playlist_lf.config(text = 'Playlist: no songs to shuffle')
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return
         
         original_order = list(self.playlist_tree.get_children())
@@ -1295,7 +1326,8 @@ class UserInterface(tk.Frame):
 
     def set_previous_song(self):
         if self.playlist_tree.get_children() == ():
-            self.playlist_lf.config(text = 'Playlist: no songs in playlist', fg = 'red')
+            self.playlist_lf.config(text = 'Playlist: no songs in playlist')
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return
         # get iid of first item
         iid_last = int(self.playlist_tree.get_children()[-1])
@@ -1322,7 +1354,8 @@ class UserInterface(tk.Frame):
 
     def set_next_song(self):
         if self.playlist_tree.get_children() == ():
-            self.playlist_lf.config(text = 'Playlist: no songs in playlist', fg = 'red')
+            self.playlist_lf.config(text = 'Playlist: no songs in playlist')
+            self.playlist_lf_l.config(foreground = self.ERROR_COLOR, background = self.BACKGROUND_COLOR)
             return
         # get iid of first item
         iid_first = int(self.playlist_tree.get_children()[0])
@@ -1477,6 +1510,8 @@ if __name__ == '__main__':
     root.mainloop()
 
 
+
+# TODO cleanup buttons 
 
 # TODO add label above/below song progression slider to show title of currently playing song 
 
